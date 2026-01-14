@@ -1,6 +1,5 @@
+// lib/session.ts
 import { SignJWT, jwtVerify } from "jose";
-
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || "dev_secret");
 
 export type SessionPayload = {
   userId: string;
@@ -8,18 +7,47 @@ export type SessionPayload = {
   role: string;
 };
 
-export async function signSession(payload: SessionPayload, maxAgeSeconds?: number) {
+// ✅ đồng bộ với code dùng cookies().get(SESSION_COOKIE_NAME)
+export const SESSION_COOKIE_NAME = "auth_session";
+
+function getSecret(): Uint8Array {
+  const raw =
+    process.env.JWT_SECRET ||
+    process.env.SESSION_SECRET ||
+    "dev_secret"; // chỉ dùng khi dev
+
+  return new TextEncoder().encode(raw);
+}
+
+export async function signSession(
+  payload: SessionPayload,
+  maxAgeSeconds?: number
+) {
+  const secret = getSecret();
+
   const jwt = new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt();
 
-  if (maxAgeSeconds) jwt.setExpirationTime(`${maxAgeSeconds}s`);
-  else jwt.setExpirationTime("2h"); // session ngắn nếu không remember
+  if (maxAgeSeconds && Number.isFinite(maxAgeSeconds) && maxAgeSeconds > 0) {
+    jwt.setExpirationTime(`${Math.floor(maxAgeSeconds)}s`);
+  } else {
+    jwt.setExpirationTime("2h"); // session ngắn nếu không remember
+  }
 
   return jwt.sign(secret);
 }
 
-export async function verifySession(token: string) {
+export async function verifySession(token: string): Promise<SessionPayload> {
+  const secret = getSecret();
   const { payload } = await jwtVerify(token, secret);
-  return payload as unknown as SessionPayload;
+
+  // ✅ normalize + validate tối thiểu
+  const userId = String((payload as any)?.userId || "");
+  const username = String((payload as any)?.username || "");
+  const role = String((payload as any)?.role || "user");
+
+  if (!userId) throw new Error("Invalid session: missing userId");
+
+  return { userId, username, role };
 }

@@ -3,6 +3,9 @@
 
 // Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -11,23 +14,71 @@ datasource db {
   provider = "postgresql"
 }
 
+/* -------------------- AUTH -------------------- */
+
 enum TokenType {
   EMAIL_VERIFY
   LOGIN_2FA
   PASSWORD_RESET
 }
 
+/* -------------------- LEARNING -------------------- */
+
+enum CefrLevel {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum SkillType {
+  LISTENING
+  SPEAKING
+}
+
+enum ExerciseType {
+  SHADOWING
+  DICTATION
+  PRONUNCIATION
+  ROLEPLAY
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
 model User {
   id              String    @id @default(cuid())
   email           String    @unique
   username        String    @unique
+
+  // ✅ biệt danh (hiển thị trong app)
+  displayName     String?
+
   passwordHash    String
   role            String    @default("user")
   emailVerifiedAt DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
+  avatarUrl       String?   @db.Text
+  avatarPublicId  String?   @db.Text
+
+  // ✅ mục tiêu học/ngày (phút)
+  dailyGoalMin    Int       @default(15)
+
+  // ✅ level hiện tại của user (để lọc bài theo trình độ)
+  levelId         String?
+  level           Level?    @relation(fields: [levelId], references: [id], onDelete: SetNull)
+
   tokens          Token[]
+  progress        UserExerciseProgress[]
+
+  @@index([levelId])
 }
 
 model Token {
@@ -43,4 +94,122 @@ model Token {
 
   @@index([userId, type, expiresAt])
   @@index([userId, type, sentAt])
+}
+
+/* -------------------- LEVEL / LESSON / EXERCISE -------------------- */
+
+// ✅ Level CEFR (A1..C2)
+model Level {
+  id           String    @id @default(cuid())
+  code         CefrLevel @unique     // A1/A2/B1...
+  name         String                // ví dụ: "Beginner", "Intermediate"
+  description  String?
+  order        Int       @unique     // 1..6 để sort
+
+  // gợi ý thời lượng mỗi bài cho level (phút)
+  recommendedMinPerLesson Int @default(10)
+
+  lessons      Lesson[]
+  users        User[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// ✅ Lesson: 1 bài học thuộc 1 level
+model Lesson {
+  id          String    @id @default(cuid())
+  levelId     String
+  level       Level     @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+
+  // mục tiêu thời lượng (phút) cho bài này
+  estimatedMin Int      @default(10)
+
+  // kĩ năng chính của lesson (nghe/nói)
+  primarySkill SkillType @default(LISTENING)
+
+  // để xếp thứ tự trong level
+  order       Int
+
+  // publish/hide
+  isPublished Boolean  @default(false)
+
+  exercises   Exercise[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([levelId, order])
+  @@index([levelId, isPublished])
+}
+
+// ✅ Exercise: bài tập cụ thể trong lesson (shadowing/dictation/roleplay...)
+model Exercise {
+  id          String       @id @default(cuid())
+  lessonId    String
+  lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  type        ExerciseType
+  skill       SkillType
+
+  title       String
+  instruction String?
+
+  // link video/audio (nếu bạn dùng)
+  mediaUrl    String?      @db.Text
+
+  // transcript / script / đáp án / rubric... (tuỳ bài)
+  contentJson Json?
+
+  // thời lượng gợi ý (phút)
+  estimatedMin Int         @default(5)
+
+  order       Int
+  isPublished Boolean      @default(false)
+
+  progress    UserExerciseProgress[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([lessonId, order])
+  @@index([lessonId, isPublished])
+  @@index([type, skill])
+}
+
+// ✅ Progress: user làm tới đâu (theo từng exercise)
+model UserExerciseProgress {
+  id          String         @id @default(cuid())
+  userId      String
+  exerciseId  String
+
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise    Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  status      ProgressStatus @default(NOT_STARTED)
+
+  // % hoàn thành (0..100)
+  progressPct Int            @default(0)
+
+  // tổng phút user đã học ở exercise này
+  timeSpentMin Int           @default(0)
+
+  // điểm (tuỳ bài)
+  score       Float?
+
+  // lần cuối học
+  lastAccessedAt DateTime?
+
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, exerciseId])
+  @@index([userId, status])
+  @@index([exerciseId])
 }

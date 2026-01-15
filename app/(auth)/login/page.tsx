@@ -64,21 +64,17 @@ export default function LoginPage() {
           return;
         }
 
-        // ✅ LƯU EMAIL THẬT (kể cả khi login bằng username)
         try {
           localStorage.setItem(PENDING_LOGIN_EMAIL_KEY, email);
           localStorage.setItem(PENDING_LOGIN_REMEMBER_KEY, JSON.stringify(remember));
         } catch {}
 
         showMessage("success", "Vui lòng kiểm tra email để lấy mã xác thực...");
-
-        // ✅ Route đúng vì bạn có app/(auth)/verify-login/page.tsx
         router.push(`/verify-login?email=${encodeURIComponent(email)}`);
         return;
       }
 
       if (data?.status === "success") {
-        // (nếu sau này bạn cho login không cần 2FA)
         try {
           localStorage.removeItem(PENDING_LOGIN_EMAIL_KEY);
           localStorage.removeItem(PENDING_LOGIN_REMEMBER_KEY);
@@ -96,6 +92,12 @@ export default function LoginPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  // ✅ Nút Google OAuth
+  function loginWithGoogle() {
+    const rememberValue = remember ? "1" : "0";
+    window.location.href = `/api/oauth/google?remember=${rememberValue}`;
   }
 
   const messageClass =
@@ -159,12 +161,8 @@ export default function LoginPage() {
             <section className="w-full">
               <div className="w-full max-w-[480px]">
                 <div className="flex flex-col gap-2 text-center sm:text-left">
-                  <h1 className="text-3xl sm:text-4xl font-black leading-tight tracking-tight">
-                    Chào mừng trở lại!
-                  </h1>
-                  <p className="text-muted text-base leading-normal">
-                    Tiếp tục hành trình chinh phục tiếng Anh của bạn.
-                  </p>
+                  <h1 className="text-3xl sm:text-4xl font-black leading-tight tracking-tight">Chào mừng trở lại!</h1>
+                  <p className="text-muted text-base leading-normal">Tiếp tục hành trình chinh phục tiếng Anh của bạn.</p>
                 </div>
 
                 <form onSubmit={onSubmit} className="flex flex-col gap-5 mt-6">
@@ -257,6 +255,7 @@ export default function LoginPage() {
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
+                    {/* ✅ GOOGLE OAUTH */}
                     <button
                       type="button"
                       className="flex items-center justify-center gap-2 h-12 rounded-lg
@@ -264,12 +263,13 @@ export default function LoginPage() {
                                  text-slate-800 font-semibold
                                  dark:border-[#324d67] dark:bg-[#192633] dark:hover:bg-[#233648] dark:text-white
                                  transition-all"
-                      onClick={() => alert("Tích hợp Google OAuth sau")}
+                      onClick={loginWithGoogle}
                     >
                       <FaGoogle className="w-5 h-5" />
                       <span>Google</span>
                     </button>
 
+                    {/* Facebook làm sau */}
                     <button
                       type="button"
                       className="flex items-center justify-center gap-2 h-12 rounded-lg
@@ -277,7 +277,7 @@ export default function LoginPage() {
                                  text-slate-800 font-semibold
                                  dark:border-[#324d67] dark:bg-[#192633] dark:hover:bg-[#233648] dark:text-white
                                  transition-all"
-                      onClick={() => alert("Tích hợp Facebook OAuth sau")}
+                      onClick={() => alert("Tích hợp Facebook sau")}
                     >
                       <FaFacebookF className="w-5 h-5" />
                       <span>Facebook</span>
@@ -296,7 +296,6 @@ export default function LoginPage() {
               </div>
             </section>
 
-            {/* RIGHT giữ nguyên như bạn */}
             <section className="w-full">
               <div className="rounded-2xl px-6 sm:px-10 py-10 glass-card">
                 <div className="text-center">
@@ -317,6 +316,7 @@ export default function LoginPage() {
                 </div>
               </div>
             </section>
+
           </div>
         </div>
       </main>

@@ -39,6 +39,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!user.passwordHash) {
+      return NextResponse.json(
+        { status: "error", message: "Sai email/tên người dùng hoặc mật khẩu." },
+        { status: 400 }
+      );
+    }
+
     const okPw = await bcrypt.compare(password, user.passwordHash);
     if (!okPw) {
       return NextResponse.json(

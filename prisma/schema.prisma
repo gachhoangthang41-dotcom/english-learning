@@ -6,15 +6,18 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
+// prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
+ 
 }
 
-/* -------------------- AUTH -------------------- */
+
 
 enum TokenType {
   EMAIL_VERIFY
@@ -22,7 +25,48 @@ enum TokenType {
   PASSWORD_RESET
 }
 
-/* -------------------- LEARNING -------------------- */
+
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+/* -------------------- LEARNING (YOUR EXISTING) -------------------- */
 
 enum CefrLevel {
   A1
@@ -53,13 +97,21 @@ enum ProgressStatus {
 
 model User {
   id              String    @id @default(cuid())
+
+  // ✅ email OAuth luôn có thể null ở vài provider,
+  // nhưng để bạn giữ logic cũ + API /me, mình vẫn giữ email unique
+  // -> với Facebook bạn phải xin quyền email, nếu không có email thì chặn signIn.
   email           String    @unique
-  username        String    @unique
+
+  // ✅ OAuth user lúc đầu chưa có username => cho phép NULL
+  username        String?   @unique
 
   // ✅ biệt danh (hiển thị trong app)
   displayName     String?
 
-  passwordHash    String
+  // ✅ OAuth user không có password => cho phép NULL
+  passwordHash    String?
+
   role            String    @default("user")
   emailVerifiedAt DateTime?
   createdAt       DateTime  @default(now())
@@ -75,8 +127,13 @@ model User {
   levelId         String?
   level           Level?    @relation(fields: [levelId], references: [id], onDelete: SetNull)
 
+  // ✅ your existing tokens + progress
   tokens          Token[]
   progress        UserExerciseProgress[]
+
+  // ✅ NextAuth relations
+  accounts        Account[]
+  sessions        Session[]
 
   @@index([levelId])
 }
@@ -96,17 +153,14 @@ model Token {
   @@index([userId, type, sentAt])
 }
 
-/* -------------------- LEVEL / LESSON / EXERCISE -------------------- */
-
 // ✅ Level CEFR (A1..C2)
 model Level {
   id           String    @id @default(cuid())
-  code         CefrLevel @unique     // A1/A2/B1...
-  name         String                // ví dụ: "Beginner", "Intermediate"
+  code         CefrLevel @unique
+  name         String
   description  String?
-  order        Int       @unique     // 1..6 để sort
+  order        Int       @unique
 
-  // gợi ý thời lượng mỗi bài cho level (phút)
   recommendedMinPerLesson Int @default(10)
 
   lessons      Lesson[]
@@ -118,96 +172,77 @@ model Level {
 
 // ✅ Lesson: 1 bài học thuộc 1 level
 model Lesson {
-  id          String    @id @default(cuid())
+  id          String     @id @default(cuid())
   levelId     String
-  level       Level     @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  level       Level      @relation(fields: [levelId], references: [id], onDelete: Cascade)
 
   title       String
   description String?
 
-  // mục tiêu thời lượng (phút) cho bài này
-  estimatedMin Int      @default(10)
-
-  // kĩ năng chính của lesson (nghe/nói)
+  estimatedMin Int       @default(10)
   primarySkill SkillType @default(LISTENING)
 
-  // để xếp thứ tự trong level
   order       Int
-
-  // publish/hide
-  isPublished Boolean  @default(false)
+  isPublished Boolean   @default(false)
 
   exercises   Exercise[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@unique([levelId, order])
   @@index([levelId, isPublished])
 }
 
-// ✅ Exercise: bài tập cụ thể trong lesson (shadowing/dictation/roleplay...)
 model Exercise {
-  id          String       @id @default(cuid())
-  lessonId    String
-  lesson      Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  id           String       @id @default(cuid())
+  lessonId     String
+  lesson       Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
 
-  type        ExerciseType
-  skill       SkillType
+  type         ExerciseType
+  skill        SkillType
 
-  title       String
-  instruction String?
+  title        String
+  instruction  String?
 
-  // link video/audio (nếu bạn dùng)
-  mediaUrl    String?      @db.Text
+  mediaUrl     String?      @db.Text
+  contentJson  Json?
 
-  // transcript / script / đáp án / rubric... (tuỳ bài)
-  contentJson Json?
+  estimatedMin Int          @default(5)
 
-  // thời lượng gợi ý (phút)
-  estimatedMin Int         @default(5)
+  order        Int
+  isPublished  Boolean      @default(false)
 
-  order       Int
-  isPublished Boolean      @default(false)
+  progress     UserExerciseProgress[]
 
-  progress    UserExerciseProgress[]
-
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   @@unique([lessonId, order])
   @@index([lessonId, isPublished])
   @@index([type, skill])
 }
 
-// ✅ Progress: user làm tới đâu (theo từng exercise)
 model UserExerciseProgress {
-  id          String         @id @default(cuid())
-  userId      String
-  exerciseId  String
+  id            String         @id @default(cuid())
+  userId        String
+  exerciseId    String
 
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exercise    Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise      Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
 
-  status      ProgressStatus @default(NOT_STARTED)
+  status        ProgressStatus @default(NOT_STARTED)
+  progressPct   Int            @default(0)
+  timeSpentMin  Int            @default(0)
 
-  // % hoàn thành (0..100)
-  progressPct Int            @default(0)
-
-  // tổng phút user đã học ở exercise này
-  timeSpentMin Int           @default(0)
-
-  // điểm (tuỳ bài)
-  score       Float?
-
-  // lần cuối học
+  score         Float?
   lastAccessedAt DateTime?
 
-  startedAt   DateTime?
-  completedAt DateTime?
+  startedAt     DateTime?
+  completedAt   DateTime?
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   @@unique([userId, exerciseId])
   @@index([userId, status])

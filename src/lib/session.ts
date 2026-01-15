@@ -19,10 +19,7 @@ function getSecret(): Uint8Array {
   return new TextEncoder().encode(raw);
 }
 
-export async function signSession(
-  payload: SessionPayload,
-  maxAgeSeconds?: number
-) {
+export async function signSession(payload: SessionPayload, maxAgeSeconds?: number) {
   const secret = getSecret();
 
   const jwt = new SignJWT(payload)
@@ -37,6 +34,12 @@ export async function signSession(
 
   return jwt.sign(secret);
 }
+
+/**
+ * ✅ Alias để OAuth callback dùng chung tên createSessionToken
+ * Không phá code cũ
+ */
+export const createSessionToken = signSession;
 
 export async function verifySession(token: string): Promise<SessionPayload> {
   const secret = getSecret();

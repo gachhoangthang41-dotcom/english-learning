@@ -27,11 +27,12 @@ import {
   Signal,
 } from "lucide-react";
 
+// --- TYPES ---
 type MeUser = {
   id?: string;
   email?: string;
-  username?: string; // tài khoản
-  displayName?: string | null; // ✅ biệt danh
+  username?: string;
+  displayName?: string | null;
   role?: string;
   avatarUrl?: string | null;
 };
@@ -47,64 +48,58 @@ function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
+// --- MAIN COMPONENT ---
 export default function HomePage() {
   const router = useRouter();
 
-  // user menu + mobile menu
+  // State quản lý Menu & User
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const userMenuRef = React.useRef<HTMLDivElement | null>(null);
 
-  // user data
-  const [displayName, setDisplayName] = React.useState("User"); // ✅ đổi tên state cho đúng nghĩa
+  // State dữ liệu User
+  const [displayName, setDisplayName] = React.useState("User");
   const [role, setRole] = React.useState("Member");
-  const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
-
+   const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
   const [msg, setMsg] = React.useState<{ type: MsgType; text: string } | null>(null);
-
-  // core lessons scroll
+  // Ref cho chức năng cuộn ngang Core Lessons
   const coreListRef = React.useRef<HTMLDivElement | null>(null);
 
-  React.useEffect(() => {
-    // click outside to close user menu
-    function onDocClick(e: MouseEvent) {
-      if (!userMenuRef.current) return;
-      if (!userMenuRef.current.contains(e.target as Node)) {
-        setUserMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, []);
+  // --- DATA: Dữ liệu bài học (Đã cập nhật Gradient) ---
+  const lessons = [
+    {
+      level: "A1",
+      time: "10 min",
+      title: "Bài tập A1",
+      desc: "Nền tảng nghe – nói cơ bản.",
+      gradient: "bg-gradient-to-br from-[#1e3a8a] to-[#0f172a]", // Xanh đậm
+    },
+    {
+      level: "A2",
+      time: "12 min",
+      title: "Bài tập A2",
+      desc: "Tăng phản xạ – từ vựng thông dụng.",
+      gradient: "bg-gradient-to-br from-[#334155] to-[#0f172a]", // Xám xanh
+    },
+    {
+      level: "B1",
+      time: "15 min",
+      title: "Bài tập B1",
+      desc: "Nghe sâu – nói mạch lạc hơn.",
+      gradient: "bg-gradient-to-br from-[#1f2937] to-[#030712]", // Đen xám
+    },
+    {
+      level: "B2",
+      time: "20 min",
+      title: "Bài tập B2",
+      desc: "Tốc độ + độ chính xác cao hơn.",
+      gradient: "bg-gradient-to-br from-[#3730a3] to-[#0f172a]", // Tím than
+    },
+  ];
 
-  React.useEffect(() => {
-    // load user info from /api/me
-    (async () => {
-      try {
-        const res = await fetch("/api/me", {
-          method: "GET",
-          credentials: "same-origin",
-          cache: "no-store",
-        });
-
-        const data: MeResponse = await res.json().catch(() => ({}));
-
-        if (!res.ok || data?.status !== "success") {
-          router.replace("/login");
-          return;
-        }
-
-        const u: MeUser = data.user || {};
-        // ✅ ưu tiên biệt danh, fallback username
-        setDisplayName((u.displayName || u.username || "User").trim());
-        setRole(u.role || "Member");
-        setAvatarUrl(u.avatarUrl || null);
-      } catch {
-        router.replace("/login");
-      }
-    })();
-  }, [router]);
-
+  // --- EFFECTS ---
+  
+  // --- ACTIONS ---
   async function onLogout() {
     setMsg({ type: "info", text: "Đang đăng xuất..." });
     try {
@@ -113,13 +108,11 @@ export default function HomePage() {
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
       });
-
       if (!res.ok) {
         const data = await res.json().catch(() => null);
         setMsg({ type: "error", text: data?.message || `HTTP ${res.status}` });
         return;
       }
-
       router.replace("/login");
     } catch (e) {
       console.error(e);
@@ -136,7 +129,7 @@ export default function HomePage() {
   function scrollCore(dir: "prev" | "next") {
     const el = coreListRef.current;
     if (!el) return;
-    const amount = 360;
+    const amount = 320; // Scroll bằng chiều rộng 1 thẻ
     el.scrollBy({ left: dir === "prev" ? -amount : amount, behavior: "smooth" });
   }
 
@@ -150,7 +143,7 @@ export default function HomePage() {
   return (
     <div className="bg-background-dark text-white antialiased overflow-x-hidden">
       <div className="h-screen w-full flex flex-col">
-        {/* TOP NAV */}
+        {/* --- TOP NAV --- */}
         <header className="shrink-0 sticky top-0 z-[200] overflow-visible border-b border-white/10 bg-[#0b1220]/60 backdrop-blur-xl">
           <div className="mx-auto max-w-[1200px] px-5 lg:px-8 h-16 flex items-center justify-between overflow-visible">
             {/* Brand */}
@@ -164,26 +157,16 @@ export default function HomePage() {
               </div>
             </Link>
 
-            {/* Center nav */}
+            {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-2">
-              <NavItem href="/home" active icon={<House className="w-4 h-4" />}>
-                Home
-              </NavItem>
-              <NavItem href="#" icon={<BookOpen className="w-4 h-4" />}>
-                Lessons
-              </NavItem>
-              <NavItem href="#" icon={<Dumbbell className="w-4 h-4" />}>
-                Practice
-              </NavItem>
-              <NavItem href="#" icon={<Users className="w-4 h-4" />}>
-                Friends
-              </NavItem>
-              <NavItem href="#" icon={<Settings className="w-4 h-4" />}>
-                Settings
-              </NavItem>
+              <NavItem href="/home" active icon={<House className="w-4 h-4" />}>Home</NavItem>
+              <NavItem href="#" icon={<BookOpen className="w-4 h-4" />}>Lessons</NavItem>
+              <NavItem href="#" icon={<Dumbbell className="w-4 h-4" />}>Practice</NavItem>
+              <NavItem href="#" icon={<Users className="w-4 h-4" />}>Friends</NavItem>
+              <NavItem href="#" icon={<Settings className="w-4 h-4" />}>Settings</NavItem>
             </nav>
 
-            {/* Right */}
+            {/* Right Controls */}
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -195,7 +178,7 @@ export default function HomePage() {
                 <Bell className="w-5 h-5 text-slate-200/90" />
               </button>
 
-              {/* User menu */}
+              {/* User Menu Dropdown */}
               <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
@@ -203,12 +186,9 @@ export default function HomePage() {
                   onClick={() => setUserMenuOpen((v) => !v)}
                 >
                   <div className="text-right leading-tight hidden sm:block">
-                    {/* ✅ HIỂN THỊ BIỆT DANH */}
                     <div className="text-sm font-semibold">{displayName}</div>
                     <div className="text-[11px] text-slate-400">{role}</div>
                   </div>
-
-                  {/* AVATAR */}
                   <div className="relative size-8 rounded-full bg-white/10 ring-1 ring-white/10 overflow-hidden grid place-items-center">
                     {avatarUrl ? (
                       <Image src={avatarUrl} alt="Avatar" fill className="object-cover" sizes="32px" />
@@ -216,7 +196,6 @@ export default function HomePage() {
                       <span className="text-sm">🙂</span>
                     )}
                   </div>
-
                   <ChevronDown className="w-4 h-4 text-slate-300" />
                 </button>
 
@@ -225,44 +204,19 @@ export default function HomePage() {
                     "absolute right-0 mt-2 w-44 rounded-xl border border-white/10 bg-[#0f172a]/95 backdrop-blur-xl shadow-xl overflow-hidden z-[999] pointer-events-auto",
                     userMenuOpen ? "block" : "hidden"
                   )}
-                  role="menu"
-                  aria-label="User menu"
                 >
-                  <button
-                    type="button"
-                    className="w-full text-left block px-4 py-2 text-sm hover:bg-white/5"
-                    onClick={() => go("/profile")}
-                    role="menuitem"
-                  >
-                    Profile
-                  </button>
-
-                  <button
-                    type="button"
-                    className="w-full text-left block px-4 py-2 text-sm hover:bg-white/5"
-                    onClick={() => go("/help")}
-                    role="menuitem"
-                  >
-                    Help
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={onLogout}
-                    className="w-full text-left px-4 py-2 text-sm hover:bg-white/5 text-red-300 inline-flex items-center gap-2"
-                    role="menuitem"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Đăng xuất
+                  <button onClick={() => go("/profile")} className="w-full text-left block px-4 py-2 text-sm hover:bg-white/5">Profile</button>
+                  <button onClick={() => go("/help")} className="w-full text-left block px-4 py-2 text-sm hover:bg-white/5">Help</button>
+                  <button onClick={onLogout} className="w-full text-left px-4 py-2 text-sm hover:bg-white/5 text-red-300 inline-flex items-center gap-2">
+                    <LogOut className="w-4 h-4" /> Đăng xuất
                   </button>
                 </div>
               </div>
 
-              {/* Mobile menu */}
+              {/* Mobile Menu Toggle */}
               <button
                 type="button"
                 className="md:hidden size-9 rounded-xl bg-white/5 border border-white/10 grid place-items-center"
-                aria-label="Menu"
                 onClick={() => setMobileMenuOpen((v) => !v)}
               >
                 <Menu className="w-5 h-5" />
@@ -270,40 +224,29 @@ export default function HomePage() {
             </div>
           </div>
 
-          {/* Mobile nav */}
-          {mobileMenuOpen ? (
+          {/* Mobile Nav Content */}
+          {mobileMenuOpen && (
             <div className="md:hidden border-t border-white/10 bg-[#0b1220]/70 backdrop-blur-xl">
               <div className="mx-auto max-w-[1200px] px-5 lg:px-8 py-3 flex flex-col gap-2">
-                <NavItem href="/home" active icon={<House className="w-4 h-4" />}>
-                  Home
-                </NavItem>
-                <NavItem href="#" icon={<BookOpen className="w-4 h-4" />}>
-                  Lessons
-                </NavItem>
-                <NavItem href="#" icon={<Dumbbell className="w-4 h-4" />}>
-                  Practice
-                </NavItem>
-                <NavItem href="#" icon={<Users className="w-4 h-4" />}>
-                  Friends
-                </NavItem>
-                <NavItem href="#" icon={<Settings className="w-4 h-4" />}>
-                  Settings
-                </NavItem>
+                <NavItem href="/home" active icon={<House className="w-4 h-4" />}>Home</NavItem>
+                <NavItem href="#" icon={<BookOpen className="w-4 h-4" />}>Lessons</NavItem>
+                <NavItem href="#" icon={<Dumbbell className="w-4 h-4" />}>Practice</NavItem>
+                <NavItem href="#" icon={<Users className="w-4 h-4" />}>Friends</NavItem>
+                <NavItem href="#" icon={<Settings className="w-4 h-4" />}>Settings</NavItem>
               </div>
             </div>
-          ) : null}
+          )}
         </header>
 
-        {/* MAIN */}
+        {/* --- MAIN CONTENT --- */}
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-[1200px] px-5 lg:px-8 py-6 lg:py-8 space-y-8">
             <div className={cx("rounded-lg p-3 text-sm", msg ? messageClass : "hidden")}>{msg?.text}</div>
 
-            {/* HERO */}
+            {/* HERO SECTION */}
             <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-blue-600/25 via-[#0b1220] to-[#0b1220] p-6 lg:p-8">
               <div className="absolute -top-24 -left-24 size-[380px] rounded-full bg-blue-500/25 blur-[90px]" />
               <div className="absolute -bottom-28 -right-24 size-[420px] rounded-full bg-cyan-500/15 blur-[100px]" />
-
               <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                 <div>
                   <h1 className="text-3xl md:text-4xl font-black tracking-tight">
@@ -313,7 +256,6 @@ export default function HomePage() {
                     Bạn đang có <span className="text-blue-400 font-bold">5-day streak</span>. Giữ nhịp mỗi ngày nhé!
                   </p>
                 </div>
-
                 <div className="flex items-center gap-4">
                   <div className="hidden sm:block text-right">
                     <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Daily Goal</div>
@@ -321,154 +263,141 @@ export default function HomePage() {
                       <div className="h-full w-[80%] bg-blue-500 rounded-full" />
                     </div>
                   </div>
-
-                  <button
-                    type="button"
-                    className="h-11 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-bold shadow-lg shadow-blue-500/20 flex items-center gap-2"
-                    onClick={() => setMsg({ type: "info", text: "Resume Learning sẽ có sau." })}
-                  >
-                    <Zap className="w-5 h-5" />
-                    Resume Learning
+                  <button onClick={() => setMsg({ type: "info", text: "Coming soon." })} className="h-11 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-bold shadow-lg shadow-blue-500/20 flex items-center gap-2">
+                    <Zap className="w-5 h-5" /> Resume Learning
                   </button>
                 </div>
               </div>
             </section>
 
-            {/* STATS */}
+            {/* STATS SECTION */}
             <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard icon={<Flame className="w-5 h-5 text-orange-300" />} badge="+1 Day" badgeTone="emerald" label="Weekly Streak" value="5 Days" />
               <StatCard icon={<GraduationCap className="w-5 h-5 text-blue-300" />} badge="+15 New" badgeTone="emerald" label="Words Learned" value="120" />
               <StatCard icon={<Timer className="w-5 h-5 text-purple-300" />} badge="+30 min" badgeTone="emerald" label="Hours Studied" value="4.5h" />
             </section>
 
-            {/* CORE LESSONS */}
+            {/* CORE LESSONS SECTION (Updated) */}
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-xl font-extrabold tracking-tight">Core Lessons</h2>
-
                 <div className="flex items-center gap-2">
-                  <Link href="#" className="hidden sm:inline text-blue-400 font-semibold text-sm hover:text-cyan-300 transition">
-                    View all
-                  </Link>
-
-                  <button
-                    type="button"
-                    onClick={() => scrollCore("prev")}
-                    className="size-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition grid place-items-center"
-                    aria-label="Trước"
-                  >
+                  <Link href="#" className="hidden sm:inline text-blue-400 font-semibold text-sm hover:text-cyan-300 transition">View all</Link>
+                  <button onClick={() => scrollCore("prev")} className="size-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition grid place-items-center">
                     <ChevronLeft className="w-5 h-5" />
                   </button>
-
-                  <button
-                    type="button"
-                    onClick={() => scrollCore("next")}
-                    className="size-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition grid place-items-center"
-                    aria-label="Sau"
-                  >
+                  <button onClick={() => scrollCore("next")} className="size-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition grid place-items-center">
                     <ChevronRight className="w-5 h-5" />
                   </button>
                 </div>
               </div>
 
-              <div ref={coreListRef} className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth pb-1">
-                <LessonCard level="A1" minutes="10 min" title="Bài tập A1" desc="Nền tảng nghe – nói cơ bản." tone="blue" />
-                <LessonCard level="A2" minutes="12 min" title="Bài tập A2" desc="Tăng phản xạ – từ vựng thông dụng." tone="cyan" />
-                <LessonCard level="B1" minutes="15 min" title="Bài tập B1" desc="Nghe sâu – nói mạch lạc hơn." tone="emerald" />
-                <LessonCard level="B2" minutes="18 min" title="Bài tập B2" desc="Tốc độ + độ chính xác cao hơn." tone="purple" />
+              <div ref={coreListRef} className="no-scrollbar flex gap-4 overflow-x-auto scroll-smooth pb-4 px-1">
+                {lessons.map((lesson, index) => (
+                  <LessonCard
+                    key={index}
+                    level={lesson.level}
+                    time={lesson.time}
+                    title={lesson.title}
+                    desc={lesson.desc}
+                    gradient={lesson.gradient}
+                    href={`/lessons/${lesson.level.toLowerCase()}`}
+                  />
+                ))}
               </div>
             </section>
 
             {/* RECOMMENDED + ACTIVITY */}
-            <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-extrabold tracking-tight">Recommended for You</h2>
-                  <Link href="#" className="text-blue-400 font-semibold text-sm hover:text-cyan-300 transition">
-                    View all
-                  </Link>
-                </div>
+<section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <div className="lg:col-span-2 space-y-4">
+    <div className="flex items-center justify-between">
+      <h2 className="text-xl font-extrabold tracking-tight">Recommended for You</h2>
+      <Link href="#" className="text-blue-400 font-semibold text-sm hover:text-cyan-300 transition">
+        View all
+      </Link>
+    </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <RecommendedCard
-                    tag="Shadowing"
-                    title="Business English: Negotiation"
-                    metaLeft={
-                      <span className="inline-flex items-center gap-1">
-                        <Timer className="w-4 h-4" /> 15 min
-                      </span>
-                    }
-                    metaRight={
-                      <span className="inline-flex items-center gap-1">
-                        <Signal className="w-4 h-4" /> B2
-                      </span>
-                    }
-                    bgTone="slate"
-                    icon={<Mic2 className="w-4 h-4" />}
-                  />
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <RecommendedCard
+        tag="Shadowing"
+        title="Business English: Negotiation"
+        metaLeft={
+          <span className="inline-flex items-center gap-1">
+            <Timer className="w-4 h-4" /> 15 min
+          </span>
+        }
+        metaRight={
+          <span className="inline-flex items-center gap-1">
+            <Signal className="w-4 h-4" /> B2
+          </span>
+        }
+        bgTone="slate"
+        icon={<Mic2 className="w-4 h-4" />}
+        href="/practice/shadowing" 
+      />
 
-                  <RecommendedCard
-                    tag="Dictation"
-                    title="Daily News: Tech Trends"
-                    metaLeft={
-                      <span className="inline-flex items-center gap-1">
-                        <Timer className="w-4 h-4" /> 10 min
-                      </span>
-                    }
-                    metaRight={
-                      <span className="inline-flex items-center gap-1">
-                        <Signal className="w-4 h-4" /> C1
-                      </span>
-                    }
-                    bgTone="slate2"
-                    icon={<Newspaper className="w-4 h-4" />}
-                  />
-                </div>
-              </div>
+      <RecommendedCard
+        tag="Dictation"
+        title="Daily News: Tech Trends"
+        metaLeft={
+          <span className="inline-flex items-center gap-1">
+            <Timer className="w-4 h-4" /> 10 min
+          </span>
+        }
+        metaRight={
+          <span className="inline-flex items-center gap-1">
+            <Signal className="w-4 h-4" /> C1
+          </span>
+        }
+        bgTone="slate2"
+        icon={<Newspaper className="w-4 h-4" />}
+        href="/practice/dictation" 
+      />
+    </div>
+  </div>
 
-              <aside className="space-y-4">
-                <h2 className="text-xl font-extrabold tracking-tight">Activity This Week</h2>
+  <aside className="space-y-4">
+    <h2 className="text-xl font-extrabold tracking-tight">Activity This Week</h2>
 
-                <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-sm text-slate-400 font-semibold uppercase tracking-wider">Total Time</div>
-                      <div className="mt-2 text-2xl font-black">12h 30m</div>
-                    </div>
-                    <div className="size-10 rounded-xl bg-blue-500/15 ring-1 ring-white/10 grid place-items-center">
-                      <TrendingUp className="w-5 h-5 text-blue-300" />
-                    </div>
-                  </div>
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm text-slate-400 font-semibold uppercase tracking-wider">Total Time</div>
+          <div className="mt-2 text-2xl font-black">12h 30m</div>
+        </div>
+        <div className="size-10 rounded-xl bg-blue-500/15 ring-1 ring-white/10 grid place-items-center">
+          <TrendingUp className="w-5 h-5 text-blue-300" />
+        </div>
+      </div>
 
-                  <div className="mt-5 grid grid-cols-7 gap-2 items-end h-28">
-                    <div className="h-[35%] bg-white/10 rounded-md" />
-                    <div className="h-[60%] bg-white/10 rounded-md" />
-                    <div className="h-[28%] bg-white/10 rounded-md" />
-                    <div className="h-[80%] bg-white/10 rounded-md" />
-                    <div className="h-[92%] bg-blue-500 rounded-md shadow-[0_0_14px_rgba(59,130,246,0.35)]" />
-                    <div className="h-[18%] bg-white/10 rounded-md" />
-                    <div className="h-[12%] bg-white/10 rounded-md" />
-                  </div>
+      <div className="mt-5 grid grid-cols-7 gap-2 items-end h-28">
+        <div className="h-[35%] bg-white/10 rounded-md" />
+        <div className="h-[60%] bg-white/10 rounded-md" />
+        <div className="h-[28%] bg-white/10 rounded-md" />
+        <div className="h-[80%] bg-white/10 rounded-md" />
+        <div className="h-[92%] bg-blue-500 rounded-md shadow-[0_0_14px_rgba(59,130,246,0.35)]" />
+        <div className="h-[18%] bg-white/10 rounded-md" />
+        <div className="h-[12%] bg-white/10 rounded-md" />
+      </div>
 
-                  <div className="mt-4 flex justify-between text-xs text-slate-400">
-                    <span>M</span><span>T</span><span>W</span><span>T</span>
-                    <span className="text-white font-bold">F</span>
-                    <span>S</span><span>S</span>
-                  </div>
-                </div>
+      <div className="mt-4 flex justify-between text-xs text-slate-400">
+        <span>M</span><span>T</span><span>W</span><span>T</span>
+        <span className="text-white font-bold">F</span>
+        <span>S</span><span>S</span>
+      </div>
+    </div>
 
-                <Link href="/help" className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition flex items-center gap-3">
-                  <div className="size-10 rounded-xl bg-white/5 ring-1 ring-white/10 grid place-items-center">
-                    <HelpCircle className="w-5 h-5 text-slate-200" />
-                  </div>
-                  <div className="leading-tight">
-                    <div className="font-bold">Need help?</div>
-                    <div className="text-xs text-slate-400">Xem hướng dẫn sử dụng</div>
-                  </div>
-                </Link>
-              </aside>
-            </section>
-
+    <Link href="/help" className="rounded-2xl border border-white/10 bg-white/5 p-4 hover:bg-white/10 transition flex items-center gap-3">
+      <div className="size-10 rounded-xl bg-white/5 ring-1 ring-white/10 grid place-items-center">
+        <HelpCircle className="w-5 h-5 text-slate-200" />
+      </div>
+      <div className="leading-tight">
+        <div className="font-bold">Need help?</div>
+        <div className="text-xs text-slate-400">Xem hướng dẫn sử dụng</div>
+      </div>
+    </Link>
+  </aside>
+</section>
             <div className="h-10" />
           </div>
         </main>
@@ -477,108 +406,26 @@ export default function HomePage() {
   );
 }
 
-/* ----------------------- Small Components ----------------------- */
+// --- SMALL COMPONENTS ---
 
-function NavItem({
-  href,
-  icon,
-  active,
-  children,
-}: {
-  href: string;
-  icon: React.ReactNode;
-  active?: boolean;
-  children: React.ReactNode;
-}) {
+function NavItem({ href, icon, active, children }: { href: string; icon: React.ReactNode; active?: boolean; children: React.ReactNode }) {
   return (
-    <Link
-      href={href}
-      className={cx(
-        "px-3 py-2 rounded-xl border text-sm inline-flex items-center gap-2 transition",
-        active
-          ? "bg-white/5 border-white/10 font-semibold"
-          : "text-slate-300 hover:bg-white/5 hover:border-white/10 border-transparent font-medium"
-      )}
-    >
-      {icon}
-      <span>{children}</span>
+    <Link href={href} className={cx("px-3 py-2 rounded-xl border text-sm inline-flex items-center gap-2 transition", active ? "bg-white/5 border-white/10 font-semibold" : "text-slate-300 hover:bg-white/5 hover:border-white/10 border-transparent font-medium")}>
+      {icon}<span>{children}</span>
     </Link>
   );
 }
 
-function StatCard({
-  icon,
-  badge,
-  badgeTone,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  badge: string;
-  badgeTone: "emerald" | "blue" | "orange";
-  label: string;
-  value: string;
-}) {
-  const badgeClass =
-    badgeTone === "emerald"
-      ? "text-emerald-300 bg-emerald-500/15"
-      : badgeTone === "blue"
-      ? "text-blue-300 bg-blue-500/15"
-      : "text-orange-300 bg-orange-500/15";
-
+function StatCard({ icon, badge, badgeTone, label, value }: { icon: React.ReactNode; badge: string; badgeTone: "emerald" | "blue" | "orange"; label: string; value: string }) {
+  const badgeClass = badgeTone === "emerald" ? "text-emerald-300 bg-emerald-500/15" : badgeTone === "blue" ? "text-blue-300 bg-blue-500/15" : "text-orange-300 bg-orange-500/15";
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-5 hover:-translate-y-0.5 transition">
       <div className="flex items-start justify-between">
-        <div className="size-10 rounded-xl bg-white/5 ring-1 ring-white/10 grid place-items-center">
-          {icon}
-        </div>
+        <div className="size-10 rounded-xl bg-white/5 ring-1 ring-white/10 grid place-items-center">{icon}</div>
         <span className={cx("text-xs font-bold px-2 py-1 rounded-full", badgeClass)}>{badge}</span>
       </div>
-      <div className="mt-4">
-        <div className="text-sm text-slate-400 font-medium">{label}</div>
-        <div className="text-2xl font-extrabold mt-1">{value}</div>
-      </div>
+      <div className="mt-4"><div className="text-sm text-slate-400 font-medium">{label}</div><div className="text-2xl font-extrabold mt-1">{value}</div></div>
     </div>
-  );
-}
-
-function LessonCard({
-  level,
-  minutes,
-  title,
-  desc,
-  tone,
-}: {
-  level: string;
-  minutes: string;
-  title: string;
-  desc: string;
-  tone: "blue" | "cyan" | "emerald" | "purple";
-}) {
-  const toneBg =
-    tone === "blue"
-      ? "from-blue-500/25"
-      : tone === "cyan"
-      ? "from-cyan-500/20"
-      : tone === "emerald"
-      ? "from-emerald-500/18"
-      : "from-purple-500/18";
-
-  return (
-    <Link
-      href="#"
-      className="min-w-[280px] sm:min-w-[320px] rounded-2xl border border-white/10 bg-white/5 overflow-hidden hover:-translate-y-0.5 transition"
-    >
-      <div className={cx("h-24 bg-gradient-to-br", toneBg, "via-[#0b1220] to-[#0b1220]")} />
-      <div className="p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-bold px-2 py-1 rounded-full bg-white/10 border border-white/10">{level}</span>
-          <span className="text-xs text-slate-400">{minutes}</span>
-        </div>
-        <h3 className="mt-3 font-extrabold text-lg">{title}</h3>
-        <p className="mt-1 text-sm text-slate-400">{desc}</p>
-      </div>
-    </Link>
   );
 }
 
@@ -589,6 +436,7 @@ function RecommendedCard({
   metaRight,
   bgTone,
   icon,
+  href, 
 }: {
   tag: string;
   title: string;
@@ -596,12 +444,13 @@ function RecommendedCard({
   metaRight: React.ReactNode;
   bgTone: "slate" | "slate2";
   icon: React.ReactNode;
+  href: string; 
 }) {
   const bg = bgTone === "slate" ? "from-slate-600/25" : "from-slate-700/25";
 
   return (
     <Link
-      href="#"
+      href={href} 
       className="group flex flex-col rounded-2xl border border-white/10 bg-white/5 overflow-hidden hover:-translate-y-0.5 transition"
     >
       <div className="h-32 relative overflow-hidden">
@@ -610,12 +459,10 @@ function RecommendedCard({
         <div className="absolute left-3 bottom-3 flex items-center gap-2">
           <span className="px-2 py-1 rounded bg-black/50 border border-white/10 text-xs font-semibold">{tag}</span>
           <span className="px-2 py-1 rounded bg-black/35 border border-white/10 text-xs font-semibold inline-flex items-center gap-1 text-slate-200">
-            {icon}
-            {tag === "Shadowing" ? "Speak" : "Write"}
+            {icon} {tag === "Shadowing" ? "Speak" : "Write"}
           </span>
         </div>
       </div>
-
       <div className="p-4 space-y-2">
         <h3 className="font-extrabold text-lg">{title}</h3>
         <div className="flex items-center gap-3 text-slate-400 text-sm">
@@ -623,6 +470,60 @@ function RecommendedCard({
           {metaRight}
         </div>
       </div>
+    </Link>
+  );
+}
+
+// --- LESSON CARD MỚI (YOUR SNIPPET) ---
+
+function LessonCard({
+  level,
+  time,
+  title,
+  desc,
+  gradient,
+  href, 
+}: {
+  level: string;
+  time: string;
+  title: string;
+  desc: string;
+  gradient: string;
+  href: string; 
+}) {
+  return (
+    <Link
+      href={href} 
+      className={`
+        relative overflow-hidden rounded-2xl p-6 
+        flex flex-col justify-between shrink-0
+        h-[220px] w-[280px] sm:w-[320px]
+        cursor-pointer transition-all duration-300 
+        hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-900/20
+        border border-white/10
+        ${gradient}
+      `}
+    >
+      <div className="flex justify-between items-start z-10">
+        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-inner">
+          <span className="text-sm font-bold text-white">{level}</span>
+        </div>
+        <span className="text-xs font-medium text-gray-300 bg-black/20 px-2 py-1 rounded-md backdrop-blur-sm">
+          {time}
+        </span>
+      </div>
+
+      <div className="mt-auto z-10">
+        <h3 className="text-xl font-bold text-white mb-2 tracking-wide">
+          {title}
+        </h3>
+        <p className="text-sm text-gray-400 font-medium line-clamp-2 leading-relaxed">
+          {desc}
+        </p>
+      </div>
+
+      <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-24 h-24 bg-black/20 rounded-full blur-2xl pointer-events-none"></div>
     </Link>
   );
 }

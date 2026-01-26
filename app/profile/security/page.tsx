@@ -11,8 +11,9 @@ import {
   Volume2,
   Bell,
   Shield,
+  Save,
+  KeyRound,
   Mail,
-  Calendar,
   Camera,
   Loader2,
 } from "lucide-react";
@@ -32,26 +33,29 @@ type MeUser = {
   avatarUrl?: string | null;
 };
 
-function formatDate(iso: string) {
-  try {
-    return new Intl.DateTimeFormat("vi-VN", {
-      dateStyle: "medium",
-      timeStyle: "short",
-    }).format(new Date(iso));
-  } catch {
-    return iso;
-  }
-}
-
-export default function ProfilePage() {
+export default function SecurityPage() {
   const router = useRouter();
   const pathname = usePathname();
 
   const [loading, setLoading] = React.useState(true);
   const [user, setUser] = React.useState<MeUser | null>(null);
+
   const [msg, setMsg] = React.useState<{ type: MsgType; text: string } | null>(
     null
   );
+
+  // forms
+  const [displayName, setDisplayName] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [emailPw, setEmailPw] = React.useState("");
+
+  const [currentPw, setCurrentPw] = React.useState("");
+  const [newPw, setNewPw] = React.useState("");
+  const [confirmPw, setConfirmPw] = React.useState("");
+
+  const [savingName, setSavingName] = React.useState(false);
+  const [savingEmail, setSavingEmail] = React.useState(false);
+  const [savingPw, setSavingPw] = React.useState(false);
 
   // avatar upload
   const fileRef = React.useRef<HTMLInputElement | null>(null);
@@ -84,6 +88,10 @@ export default function ProfilePage() {
 
       const u: MeUser = data.user;
       setUser(u);
+
+      // ✅ fill form
+      setDisplayName(u.displayName || u.username || "");
+      setEmail(u.email || "");
     } catch {
       router.replace("/login");
     } finally {
@@ -95,6 +103,128 @@ export default function ProfilePage() {
     loadMe();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function saveDisplayName() {
+    if (savingName) return;
+    const name = displayName.trim();
+
+    if (name.length < 3 || name.length > 30) {
+      showMessage("error", "Tên hiển thị phải từ 3–30 ký tự.");
+      return;
+    }
+
+    setSavingName(true);
+    showMessage("info", "Đang lưu tên hiển thị...");
+
+    try {
+      const res = await fetch("/api/auth/profile/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ displayName: name }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        showMessage("error", data?.message || `HTTP ${res.status}`);
+        return;
+      }
+
+      showMessage("success", data?.message || "Cập nhật thành công!");
+      await loadMe();
+    } catch (err) {
+      console.error(err);
+      showMessage("error", "Không thể kết nối đến máy chủ.");
+    } finally {
+      setSavingName(false);
+    }
+  }
+
+  async function saveEmail() {
+    if (savingEmail) return;
+    const e = email.trim().toLowerCase();
+
+    if (!e.includes("@")) {
+      showMessage("error", "Email không hợp lệ.");
+      return;
+    }
+    if (!emailPw) {
+      showMessage("error", "Vui lòng nhập mật khẩu hiện tại để đổi email.");
+      return;
+    }
+
+    setSavingEmail(true);
+    showMessage("info", "Đang cập nhật email...");
+
+    try {
+      const res = await fetch("/api/auth/profile/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ email: e, currentPassword: emailPw }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        showMessage("error", data?.message || `HTTP ${res.status}`);
+        return;
+      }
+
+      showMessage("success", data?.message || "Cập nhật thành công!");
+      setEmailPw("");
+      await loadMe();
+    } catch (err) {
+      console.error(err);
+      showMessage("error", "Không thể kết nối đến máy chủ.");
+    } finally {
+      setSavingEmail(false);
+    }
+  }
+
+  async function changePassword() {
+    if (savingPw) return;
+
+    if (!currentPw || !newPw) {
+      showMessage("error", "Vui lòng nhập mật khẩu hiện tại và mật khẩu mới.");
+      return;
+    }
+    if (newPw.length < 8) {
+      showMessage("error", "Mật khẩu mới tối thiểu 8 ký tự.");
+      return;
+    }
+    if (newPw !== confirmPw) {
+      showMessage("error", "Mật khẩu xác nhận không khớp.");
+      return;
+    }
+
+    setSavingPw(true);
+    showMessage("info", "Đang đổi mật khẩu...");
+
+    try {
+      const res = await fetch("/api/auth/profile/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+      });
+
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        showMessage("error", data?.message || `HTTP ${res.status}`);
+        return;
+      }
+
+      showMessage("success", data?.message || "Đổi mật khẩu thành công!");
+      setCurrentPw("");
+      setNewPw("");
+      setConfirmPw("");
+    } catch (err) {
+      console.error(err);
+      showMessage("error", "Không thể kết nối đến máy chủ.");
+    } finally {
+      setSavingPw(false);
+    }
+  }
 
   async function uploadAvatar(file: File) {
     if (uploadingAvatar) return;
@@ -228,7 +358,6 @@ export default function ProfilePage() {
                       )}
                     </button>
 
-                    {/* hidden input */}
                     <input
                       ref={fileRef}
                       type="file"
@@ -295,10 +424,10 @@ export default function ProfilePage() {
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <h1 className="text-2xl font-extrabold tracking-tight">
-                      Tài khoản
+                      Bảo mật
                     </h1>
                     <p className="text-muted mt-1">
-                      Xem profile và thông tin cơ bản.
+                      Đổi tên hiển thị, email và mật khẩu.
                     </p>
                   </div>
                 </div>
@@ -312,41 +441,124 @@ export default function ProfilePage() {
                   {msg?.text || ""}
                 </div>
 
-                {/* Info */}
-                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <InfoCard
-                    icon={<Mail className="w-4 h-4" />}
-                    label="Email"
-                    value={loading ? "..." : user?.email || "-"}
-                  />
+                {/* ✅ 3 khối chuyển qua đây */}
+                <div className="mt-8 grid grid-cols-1 gap-6">
+                  {/* Update display name */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                    <h2 className="font-extrabold text-lg">
+                      Đổi tên hiển thị (biệt danh)
+                    </h2>
+                    <p className="text-muted text-sm mt-1">
+                      Đổi biệt danh của bạn.
+                    </p>
 
-                  <InfoCard
-                    icon={<User className="w-4 h-4" />}
-                    label="Tên hiển thị"
-                    value={
-                      loading
-                        ? "..."
-                        : user?.displayName || user?.username || "-"
-                    }
-                  />
+                    <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                      <input
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                        className="flex-1 h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500
+                                   focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                        placeholder="Nhập tên hiển thị..."
+                      />
+                      <button
+                        type="button"
+                        onClick={saveDisplayName}
+                        disabled={savingName || loading}
+                        className="h-12 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-bold
+                                   disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+                      >
+                        <Save className="w-4 h-4" />
+                        Lưu
+                      </button>
+                    </div>
+                  </div>
 
-                  <InfoCard
-                    icon={<Calendar className="w-4 h-4" />}
-                    label="Ngày tạo"
-                    value={loading || !user ? "..." : formatDate(user.createdAt)}
-                  />
+                  {/* Update email */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                    <h2 className="font-extrabold text-lg">Đổi Gmail</h2>
+                    <p className="text-muted text-sm mt-1">
+                      Để an toàn, cần nhập mật khẩu hiện tại.
+                    </p>
 
-                  <InfoCard
-                    icon={<Shield className="w-4 h-4" />}
-                    label="Xác thực email"
-                    value={
-                      loading
-                        ? "..."
-                        : user?.emailVerifiedAt
-                        ? "Đã xác thực"
-                        : "Chưa xác thực"
-                    }
-                  />
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500
+                                   focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                        placeholder="email@domain.com"
+                      />
+                      <input
+                        value={emailPw}
+                        onChange={(e) => setEmailPw(e.target.value)}
+                        type="password"
+                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500
+                                   focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                        placeholder="Mật khẩu hiện tại"
+                      />
+                    </div>
+
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={saveEmail}
+                        disabled={savingEmail || loading}
+                        className="h-12 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-bold
+                                   disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                      >
+                        <Mail className="w-4 h-4" />
+                        Cập nhật email
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Change password */}
+                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                    <h2 className="font-extrabold text-lg">Đổi mật khẩu</h2>
+                    <p className="text-muted text-sm mt-1">
+                      Không thể xem mật khẩu cũ (chỉ đổi).
+                    </p>
+
+                    <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <input
+                        value={currentPw}
+                        onChange={(e) => setCurrentPw(e.target.value)}
+                        type="password"
+                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500
+                                   focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                        placeholder="Mật khẩu hiện tại"
+                      />
+                      <input
+                        value={newPw}
+                        onChange={(e) => setNewPw(e.target.value)}
+                        type="password"
+                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500
+                                   focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                        placeholder="Mật khẩu mới (>= 8 ký tự)"
+                      />
+                      <input
+                        value={confirmPw}
+                        onChange={(e) => setConfirmPw(e.target.value)}
+                        type="password"
+                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500
+                                   focus:outline-none focus:ring-2 focus:ring-blue-500/40 sm:col-span-2"
+                        placeholder="Nhập lại mật khẩu mới"
+                      />
+                    </div>
+
+                    <div className="mt-3">
+                      <button
+                        type="button"
+                        onClick={changePassword}
+                        disabled={savingPw || loading}
+                        className="h-12 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-bold
+                                   disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+                      >
+                        <KeyRound className="w-4 h-4" />
+                        Đổi mật khẩu
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {loading ? (
@@ -388,25 +600,5 @@ function MenuItem({
       </span>
       <span className="font-semibold">{label}</span>
     </button>
-  );
-}
-
-function InfoCard({
-  icon,
-  label,
-  value,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="flex items-center gap-2 text-slate-400 text-sm font-semibold">
-        {icon}
-        <span>{label}</span>
-      </div>
-      <div className="mt-2 text-white font-extrabold">{value}</div>
-    </div>
   );
 }

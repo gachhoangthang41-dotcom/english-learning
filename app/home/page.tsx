@@ -71,29 +71,36 @@ export default function HomePage() {
   // --- DATA: Dữ liệu bài học (Đã cập nhật Gradient) ---
   const lessons = [
     {
+      level: "Pre-A1",
+      title: "Bài tập Pre-A1",
+      desc: "Làm quen với tiếng Anh cơ bản.",
+      gradient: "bg-gradient-to-br from-[#0c4a6e] to-[#0f172a]", // Xanh biển đậm
+    },
+    {
+
       level: "A1",
-      time: "10 min",
+      
       title: "Bài tập A1",
       desc: "Nền tảng nghe – nói cơ bản.",
       gradient: "bg-gradient-to-br from-[#1e3a8a] to-[#0f172a]", // Xanh đậm
     },
     {
       level: "A2",
-      time: "12 min",
+      
       title: "Bài tập A2",
       desc: "Tăng phản xạ – từ vựng thông dụng.",
       gradient: "bg-gradient-to-br from-[#334155] to-[#0f172a]", // Xám xanh
     },
     {
       level: "B1",
-      time: "15 min",
+      
       title: "Bài tập B1",
       desc: "Nghe sâu – nói mạch lạc hơn.",
       gradient: "bg-gradient-to-br from-[#1f2937] to-[#030712]", // Đen xám
     },
     {
       level: "B2",
-      time: "20 min",
+      
       title: "Bài tập B2",
       desc: "Tốc độ + độ chính xác cao hơn.",
       gradient: "bg-gradient-to-br from-[#3730a3] to-[#0f172a]", // Tím than
@@ -444,8 +451,8 @@ React.useEffect(() => {
                   <LessonCard
                     key={index}
                     level={lesson.level}
-                    time={lesson.time}
                     title={lesson.title}
+                    
                     desc={lesson.desc}
                     gradient={lesson.gradient}
                     href={`/lessons/${lesson.level.toLowerCase()}`}
@@ -689,19 +696,19 @@ function RecommendedCard({
 
 function LessonCard({
   level,
-  time,
   title,
   desc,
   gradient,
   href,
 }: {
   level: string;
-  time: string;
   title: string;
   desc: string;
   gradient: string;
   href: string;
 }) {
+  const isPreA1 = level.toLowerCase().includes("pre");
+
   return (
     <Link
       href={href}
@@ -716,12 +723,18 @@ function LessonCard({
       `}
     >
       <div className="flex justify-between items-start z-10">
-        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-inner">
-          <span className="text-sm font-bold text-white">{level}</span>
+        {/* ✅ Khung level - fix Pre-A1 */}
+        <div
+          className={
+            isPreA1
+              ? "px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-inner"
+              : "flex items-center justify-center w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-inner"
+          }
+        >
+          <span className={isPreA1 ? "text-xs font-bold text-white" : "text-sm font-bold text-white"}>
+            {level}
+          </span>
         </div>
-        <span className="text-xs font-medium text-gray-300 bg-black/20 px-2 py-1 rounded-md backdrop-blur-sm">
-          {time}
-        </span>
       </div>
 
       <div className="mt-auto z-10">

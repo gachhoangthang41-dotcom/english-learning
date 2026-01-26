@@ -27,7 +27,9 @@ import {
   Signal,
 } from "lucide-react";
 
-// --- TYPES ---
+// ---------------- TYPES ----------------
+type MsgType = "error" | "success" | "info";
+
 type MeUser = {
   id?: string;
   email?: string;
@@ -37,116 +39,157 @@ type MeUser = {
   avatarUrl?: string | null;
 };
 
-type MeResponse =
-  | { status: "success"; user: MeUser }
-  | { status: "error"; message?: string }
-  | any;
-
-type MsgType = "error" | "success" | "info";
+type HomeStats = {
+  streakDays: number;
+  wordsLearned: number;
+  hoursStudied: number;
+  dailyGoalPct: number;
+  weekMinutes: number[]; // 7 ngày
+  todayMin: number;
+  dailyGoalMin: number;
+};
 
 function cx(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-// --- MAIN COMPONENT ---
+// ---------------- MAIN ----------------
 export default function HomePage() {
   const router = useRouter();
 
-  // State quản lý Menu & User
+  // Menu states
   const [userMenuOpen, setUserMenuOpen] = React.useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
   const userMenuRef = React.useRef<HTMLDivElement | null>(null);
 
-  // State dữ liệu User
+  // User states
   const [displayName, setDisplayName] = React.useState("User");
   const [role, setRole] = React.useState("Member");
   const [avatarUrl, setAvatarUrl] = React.useState<string | null>(null);
+
+  // Stats states (dynamic)
+  const [stats, setStats] = React.useState<HomeStats | null>(null);
+  const [loadingStats, setLoadingStats] = React.useState(true);
+
+  // UI message
   const [msg, setMsg] = React.useState<{ type: MsgType; text: string } | null>(
     null
   );
 
-  // Ref cho chức năng cuộn ngang Core Lessons
+  // Scroll ref
   const coreListRef = React.useRef<HTMLDivElement | null>(null);
 
-  // --- DATA: Dữ liệu bài học (Đã cập nhật Gradient) ---
+  // Lessons data (NO time)
   const lessons = [
     {
       level: "Pre-A1",
       title: "Bài tập Pre-A1",
       desc: "Làm quen với tiếng Anh cơ bản.",
-      gradient: "bg-gradient-to-br from-[#0c4a6e] to-[#0f172a]", // Xanh biển đậm
+      gradient: "bg-gradient-to-br from-[#0c4a6e] to-[#0f172a]",
     },
     {
-
       level: "A1",
-      
       title: "Bài tập A1",
       desc: "Nền tảng nghe – nói cơ bản.",
-      gradient: "bg-gradient-to-br from-[#1e3a8a] to-[#0f172a]", // Xanh đậm
+      gradient: "bg-gradient-to-br from-[#1e3a8a] to-[#0f172a]",
     },
     {
       level: "A2",
-      
       title: "Bài tập A2",
       desc: "Tăng phản xạ – từ vựng thông dụng.",
-      gradient: "bg-gradient-to-br from-[#334155] to-[#0f172a]", // Xám xanh
+      gradient: "bg-gradient-to-br from-[#334155] to-[#0f172a]",
     },
     {
       level: "B1",
-      
       title: "Bài tập B1",
       desc: "Nghe sâu – nói mạch lạc hơn.",
-      gradient: "bg-gradient-to-br from-[#1f2937] to-[#030712]", // Đen xám
+      gradient: "bg-gradient-to-br from-[#1f2937] to-[#030712]",
     },
     {
       level: "B2",
-      
       title: "Bài tập B2",
       desc: "Tốc độ + độ chính xác cao hơn.",
-      gradient: "bg-gradient-to-br from-[#3730a3] to-[#0f172a]", // Tím than
+      gradient: "bg-gradient-to-br from-[#3730a3] to-[#0f172a]",
     },
   ];
 
-  // --- EFFECTS ---
-  // ✅ (CHỈ SỬA AVATAR) load avatar từ /api/me
-React.useEffect(() => {
-  let alive = true;
+  // ---------------- EFFECTS ----------------
 
-  (async () => {
-    try {
-      const res = await fetch("/api/me", {
-        method: "GET",
-        credentials: "same-origin",
-        cache: "no-store",
-      });
+  // ✅ Load user info (/api/me)
+  React.useEffect(() => {
+    let alive = true;
 
-      const data = await res.json().catch(() => null);
-      if (!alive) return;
+    (async () => {
+      try {
+        const res = await fetch("/api/me", {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+        });
 
-      if (res.ok && data?.status === "success") {
-        const u = data.user || {};
+        const data = await res.json().catch(() => null);
+        if (!alive) return;
 
-        // ✅ set avatar
-        setAvatarUrl(u.avatarUrl || null);
-
-        // ✅ set tên hiển thị (ưu tiên displayName -> username -> User)
-        setDisplayName(u.displayName || u.username || "User");
-
-        // ✅ set role
-        setRole(u.role || "Member");
+        if (res.ok && data?.status === "success") {
+          const u: MeUser = data.user || {};
+          setAvatarUrl(u.avatarUrl || null);
+          setDisplayName(u.displayName || u.username || "User");
+          setRole(u.role || "Member");
+        }
+      } catch (e) {
+        console.error(e);
       }
-    } catch (e) {
-      console.error(e);
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // ✅ Load home stats dynamic (/api/stats/home)
+  React.useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      try {
+        setLoadingStats(true);
+
+        const res = await fetch("/api/stats/home", {
+          method: "GET",
+          credentials: "same-origin",
+          cache: "no-store",
+        });
+
+        const data = await res.json().catch(() => null);
+        if (!alive) return;
+
+        if (res.ok && data?.status === "success") {
+          setStats(data.stats);
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        if (alive) setLoadingStats(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // ✅ Click outside để đóng menu user
+  React.useEffect(() => {
+    function onDocClick(e: MouseEvent) {
+      const el = userMenuRef.current;
+      if (!el) return;
+      if (!el.contains(e.target as Node)) setUserMenuOpen(false);
     }
-  })();
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
 
-  return () => {
-    alive = false;
-  };
-}, []);
-
-
-  // --- ACTIONS ---
+  // ---------------- ACTIONS ----------------
   async function onLogout() {
     setMsg({ type: "info", text: "Đang đăng xuất..." });
     try {
@@ -155,11 +198,13 @@ React.useEffect(() => {
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
       });
+
       if (!res.ok) {
         const data = await res.json().catch(() => null);
         setMsg({ type: "error", text: data?.message || `HTTP ${res.status}` });
         return;
       }
+
       router.replace("/login");
     } catch (e) {
       console.error(e);
@@ -176,13 +221,14 @@ React.useEffect(() => {
   function scrollCore(dir: "prev" | "next") {
     const el = coreListRef.current;
     if (!el) return;
-    const amount = 320; // Scroll bằng chiều rộng 1 thẻ
+    const amount = 320;
     el.scrollBy({
       left: dir === "prev" ? -amount : amount,
       behavior: "smooth",
     });
   }
 
+  // ---------------- DERIVED DATA ----------------
   const messageClass =
     msg?.type === "error"
       ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-500/20"
@@ -190,10 +236,16 @@ React.useEffect(() => {
       ? "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-500/20"
       : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-500/20";
 
+  const streakText = loadingStats ? "..." : `${stats?.streakDays || 0}-day streak`;
+
+  const dailyGoalPct = stats?.dailyGoalPct ?? 0;
+  const week = stats?.weekMinutes || [0, 0, 0, 0, 0, 0, 0];
+  const maxWeek = Math.max(...week, 1);
+
   return (
     <div className="bg-background-dark text-white antialiased overflow-x-hidden">
       <div className="h-screen w-full flex flex-col">
-        {/* --- TOP NAV --- */}
+        {/* ---------------- TOP NAV ---------------- */}
         <header className="shrink-0 sticky top-0 z-[200] overflow-visible border-b border-white/10 bg-[#0b1220]/60 backdrop-blur-xl">
           <div className="mx-auto max-w-[1200px] px-5 lg:px-8 h-16 flex items-center justify-between overflow-visible">
             {/* Brand */}
@@ -202,22 +254,14 @@ React.useEffect(() => {
                 <GraduationCap className="w-5 h-5 text-blue-300" />
               </div>
               <div className="leading-tight">
-                <div className="font-extrabold tracking-tight">
-                  EnglishMaster
-                </div>
-                <div className="text-[11px] text-slate-400">
-                  Learn efficiently
-                </div>
+                <div className="font-extrabold tracking-tight">EnglishMaster</div>
+                <div className="text-[11px] text-slate-400">Learn efficiently</div>
               </div>
             </Link>
 
             {/* Desktop Nav */}
             <nav className="hidden md:flex items-center gap-2">
-              <NavItem
-                href="/home"
-                active
-                icon={<House className="w-4 h-4" />}
-              >
+              <NavItem href="/home" active icon={<House className="w-4 h-4" />}>
                 Home
               </NavItem>
               <NavItem href="#" icon={<BookOpen className="w-4 h-4" />}>
@@ -240,13 +284,15 @@ React.useEffect(() => {
                 type="button"
                 className="relative size-9 rounded-full hover:bg-white/5 border border-white/10 transition grid place-items-center"
                 title="Notifications"
-                onClick={() => setMsg({ type: "info", text: "Thông báo sẽ có sau." })}
+                onClick={() =>
+                  setMsg({ type: "info", text: "Thông báo sẽ có sau." })
+                }
               >
                 <span className="absolute top-2.5 right-2.5 size-2 rounded-full bg-red-500 ring-2 ring-[#0b1220]" />
                 <Bell className="w-5 h-5 text-slate-200/90" />
               </button>
 
-              {/* User Menu Dropdown */}
+              {/* User Menu */}
               <div className="relative" ref={userMenuRef}>
                 <button
                   type="button"
@@ -261,14 +307,14 @@ React.useEffect(() => {
                   <div className="relative size-8 rounded-full bg-white/10 ring-1 ring-white/10 overflow-hidden grid place-items-center">
                     {avatarUrl ? (
                       <Image
-                        key={avatarUrl} // ✅ (CHỈ SỬA AVATAR) bắt Image update khi URL đổi
+                        key={avatarUrl}
                         src={avatarUrl}
                         alt="Avatar"
                         fill
                         className="object-cover"
                         sizes="32px"
-                        unoptimized // ✅ (CHỈ SỬA AVATAR) đảm bảo hiện ảnh cloudinary không cần config domain
-                        onError={() => setAvatarUrl(null)} // ✅ lỗi ảnh thì fallback
+                        unoptimized
+                        onError={() => setAvatarUrl(null)}
                       />
                     ) : (
                       <span className="text-sm">🙂</span>
@@ -305,7 +351,7 @@ React.useEffect(() => {
                 </div>
               </div>
 
-              {/* Mobile Menu Toggle */}
+              {/* Mobile toggle */}
               <button
                 type="button"
                 className="md:hidden size-9 rounded-xl bg-white/5 border border-white/10 grid place-items-center"
@@ -316,15 +362,11 @@ React.useEffect(() => {
             </div>
           </div>
 
-          {/* Mobile Nav Content */}
+          {/* Mobile Nav */}
           {mobileMenuOpen && (
             <div className="md:hidden border-t border-white/10 bg-[#0b1220]/70 backdrop-blur-xl">
               <div className="mx-auto max-w-[1200px] px-5 lg:px-8 py-3 flex flex-col gap-2">
-                <NavItem
-                  href="/home"
-                  active
-                  icon={<House className="w-4 h-4" />}
-                >
+                <NavItem href="/home" active icon={<House className="w-4 h-4" />}>
                   Home
                 </NavItem>
                 <NavItem href="#" icon={<BookOpen className="w-4 h-4" />}>
@@ -344,22 +386,19 @@ React.useEffect(() => {
           )}
         </header>
 
-        {/* --- MAIN CONTENT --- */}
+        {/* ---------------- MAIN ---------------- */}
         <main className="flex-1 overflow-y-auto">
           <div className="mx-auto max-w-[1200px] px-5 lg:px-8 py-6 lg:py-8 space-y-8">
-            <div
-              className={cx(
-                "rounded-lg p-3 text-sm",
-                msg ? messageClass : "hidden"
-              )}
-            >
+            {/* msg */}
+            <div className={cx("rounded-lg p-3 text-sm", msg ? messageClass : "hidden")}>
               {msg?.text}
             </div>
 
-            {/* HERO SECTION */}
+            {/* HERO */}
             <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-blue-600/25 via-[#0b1220] to-[#0b1220] p-6 lg:p-8">
               <div className="absolute -top-24 -left-24 size-[380px] rounded-full bg-blue-500/25 blur-[90px]" />
               <div className="absolute -bottom-28 -right-24 size-[420px] rounded-full bg-cyan-500/15 blur-[100px]" />
+
               <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                 <div>
                   <h1 className="text-3xl md:text-4xl font-black tracking-tight">
@@ -367,19 +406,31 @@ React.useEffect(() => {
                   </h1>
                   <p className="text-slate-300 mt-2">
                     Bạn đang có{" "}
-                    <span className="text-blue-400 font-bold">5-day streak</span>
-                    . Giữ nhịp mỗi ngày nhé!
+                    <span className="text-blue-400 font-bold">{streakText}</span>. Giữ nhịp mỗi ngày nhé!
                   </p>
                 </div>
+
                 <div className="flex items-center gap-4">
                   <div className="hidden sm:block text-right">
                     <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
                       Daily Goal
                     </div>
+
+                    {/* ✅ progress dynamic */}
                     <div className="mt-2 w-40 h-2 rounded-full bg-white/10 overflow-hidden">
-                      <div className="h-full w-[80%] bg-blue-500 rounded-full" />
+                      <div
+                        className="h-full bg-blue-500 rounded-full transition-all"
+                        style={{ width: `${dailyGoalPct}%` }}
+                      />
+                    </div>
+
+                    <div className="mt-2 text-[11px] text-slate-400">
+                      {loadingStats
+                        ? "..."
+                        : `${stats?.todayMin || 0} / ${stats?.dailyGoalMin || 0} phút`}
                     </div>
                   </div>
+
                   <button
                     onClick={() => setMsg({ type: "info", text: "Coming soon." })}
                     className="h-11 px-5 rounded-xl bg-blue-600 hover:bg-blue-500 transition font-bold shadow-lg shadow-blue-500/20 flex items-center gap-2"
@@ -390,37 +441,38 @@ React.useEffect(() => {
               </div>
             </section>
 
-            {/* STATS SECTION */}
+            {/* STATS (dynamic) */}
             <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard
                 icon={<Flame className="w-5 h-5 text-orange-300" />}
-                badge="+1 Day"
+                badge={loadingStats ? "..." : `${stats?.todayMin || 0} min`}
                 badgeTone="emerald"
                 label="Weekly Streak"
-                value="5 Days"
+                value={loadingStats ? "..." : `${stats?.streakDays || 0} Days`}
               />
               <StatCard
                 icon={<GraduationCap className="w-5 h-5 text-blue-300" />}
-                badge="+15 New"
+                badge={loadingStats ? "..." : "This week"}
                 badgeTone="emerald"
                 label="Words Learned"
-                value="120"
+                value={loadingStats ? "..." : `${stats?.wordsLearned || 0}`}
               />
               <StatCard
                 icon={<Timer className="w-5 h-5 text-purple-300" />}
-                badge="+30 min"
+                badge={loadingStats ? "..." : `Goal ${stats?.dailyGoalMin || 0}m`}
                 badgeTone="emerald"
                 label="Hours Studied"
-                value="4.5h"
+                value={loadingStats ? "..." : `${stats?.hoursStudied || 0}h`}
               />
             </section>
 
-            {/* CORE LESSONS SECTION (Updated) */}
+            {/* CORE LESSONS */}
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-xl font-extrabold tracking-tight">
                   Core Lessons
                 </h2>
+
                 <div className="flex items-center gap-2">
                   <Link
                     href="#"
@@ -428,12 +480,14 @@ React.useEffect(() => {
                   >
                     View all
                   </Link>
+
                   <button
                     onClick={() => scrollCore("prev")}
                     className="size-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition grid place-items-center"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
+
                   <button
                     onClick={() => scrollCore("next")}
                     className="size-9 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition grid place-items-center"
@@ -452,7 +506,6 @@ React.useEffect(() => {
                     key={index}
                     level={lesson.level}
                     title={lesson.title}
-                    
                     desc={lesson.desc}
                     gradient={lesson.gradient}
                     href={`/lessons/${lesson.level.toLowerCase()}`}
@@ -515,6 +568,7 @@ React.useEffect(() => {
                 </div>
               </div>
 
+              {/* Activity This Week (dynamic chart) */}
               <aside className="space-y-4">
                 <h2 className="text-xl font-extrabold tracking-tight">
                   Activity This Week
@@ -526,21 +580,39 @@ React.useEffect(() => {
                       <div className="text-sm text-slate-400 font-semibold uppercase tracking-wider">
                         Total Time
                       </div>
-                      <div className="mt-2 text-2xl font-black">12h 30m</div>
+
+                      <div className="mt-2 text-2xl font-black">
+                        {loadingStats ? "..." : `${stats?.hoursStudied || 0}h`}
+                      </div>
+
+                      <div className="mt-1 text-xs text-slate-400">
+                        {loadingStats ? "" : "Last 7 days"}
+                      </div>
                     </div>
+
                     <div className="size-10 rounded-xl bg-blue-500/15 ring-1 ring-white/10 grid place-items-center">
                       <TrendingUp className="w-5 h-5 text-blue-300" />
                     </div>
                   </div>
 
                   <div className="mt-5 grid grid-cols-7 gap-2 items-end h-28">
-                    <div className="h-[35%] bg-white/10 rounded-md" />
-                    <div className="h-[60%] bg-white/10 rounded-md" />
-                    <div className="h-[28%] bg-white/10 rounded-md" />
-                    <div className="h-[80%] bg-white/10 rounded-md" />
-                    <div className="h-[92%] bg-blue-500 rounded-md shadow-[0_0_14px_rgba(59,130,246,0.35)]" />
-                    <div className="h-[18%] bg-white/10 rounded-md" />
-                    <div className="h-[12%] bg-white/10 rounded-md" />
+                    {week.map((m, idx) => {
+                      const pct = Math.round((m / maxWeek) * 100);
+                      const isToday = idx === 6; // cột cuối là hôm nay
+                      return (
+                        <div
+                          key={idx}
+                          className={cx(
+                            "rounded-md transition-all",
+                            isToday
+                              ? "bg-blue-500 shadow-[0_0_14px_rgba(59,130,246,0.35)]"
+                              : "bg-white/10"
+                          )}
+                          style={{ height: `${pct}%` }}
+                          title={`${m} phút`}
+                        />
+                      );
+                    })}
                   </div>
 
                   <div className="mt-4 flex justify-between text-xs text-slate-400">
@@ -579,7 +651,7 @@ React.useEffect(() => {
   );
 }
 
-// --- SMALL COMPONENTS ---
+// ---------------- SMALL COMPONENTS ----------------
 
 function NavItem({
   href,
@@ -627,16 +699,19 @@ function StatCard({
       : badgeTone === "blue"
       ? "text-blue-300 bg-blue-500/15"
       : "text-orange-300 bg-orange-500/15";
+
   return (
     <div className="rounded-2xl border border-white/10 bg-white/5 p-5 hover:-translate-y-0.5 transition">
       <div className="flex items-start justify-between">
         <div className="size-10 rounded-xl bg-white/5 ring-1 ring-white/10 grid place-items-center">
           {icon}
         </div>
+
         <span className={cx("text-xs font-bold px-2 py-1 rounded-full", badgeClass)}>
           {badge}
         </span>
       </div>
+
       <div className="mt-4">
         <div className="text-sm text-slate-400 font-medium">{label}</div>
         <div className="text-2xl font-extrabold mt-1">{value}</div>
@@ -670,17 +745,26 @@ function RecommendedCard({
       className="group flex flex-col rounded-2xl border border-white/10 bg-white/5 overflow-hidden hover:-translate-y-0.5 transition"
     >
       <div className="h-32 relative overflow-hidden">
-        <div className={cx("absolute inset-0 bg-gradient-to-br", bg, "via-[#0b1220] to-[#0b1220]")} />
+        <div
+          className={cx(
+            "absolute inset-0 bg-gradient-to-br",
+            bg,
+            "via-[#0b1220] to-[#0b1220]"
+          )}
+        />
         <div className="absolute inset-0 opacity-70 bg-[radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.12),transparent_55%)]" />
+
         <div className="absolute left-3 bottom-3 flex items-center gap-2">
           <span className="px-2 py-1 rounded bg-black/50 border border-white/10 text-xs font-semibold">
             {tag}
           </span>
+
           <span className="px-2 py-1 rounded bg-black/35 border border-white/10 text-xs font-semibold inline-flex items-center gap-1 text-slate-200">
             {icon} {tag === "Shadowing" ? "Speak" : "Write"}
           </span>
         </div>
       </div>
+
       <div className="p-4 space-y-2">
         <h3 className="font-extrabold text-lg">{title}</h3>
         <div className="flex items-center gap-3 text-slate-400 text-sm">
@@ -692,7 +776,7 @@ function RecommendedCard({
   );
 }
 
-// --- LESSON CARD ---
+// ---------------- LESSON CARD ----------------
 
 function LessonCard({
   level,
@@ -712,22 +796,22 @@ function LessonCard({
   return (
     <Link
       href={href}
-      className={`
-        relative overflow-hidden rounded-2xl p-6 
-        flex flex-col justify-between shrink-0
-        h-[220px] w-[280px] sm:w-[320px]
-        cursor-pointer transition-all duration-300 
-        hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-900/20
-        border border-white/10
-        ${gradient}
-      `}
+      className={cx(
+        "relative overflow-hidden rounded-2xl p-6",
+        "flex flex-col justify-between shrink-0",
+        "h-[220px] w-[280px] sm:w-[320px]",
+        "cursor-pointer transition-all duration-300",
+        "hover:scale-[1.02] hover:shadow-2xl hover:shadow-blue-900/20",
+        "border border-white/10",
+        gradient
+      )}
     >
       <div className="flex justify-between items-start z-10">
-        {/* ✅ Khung level - fix Pre-A1 */}
+        {/* ✅ Fix Pre-A1: pill, không méo */}
         <div
           className={
             isPreA1
-              ? "px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-inner"
+              ? "inline-flex items-center px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-inner"
               : "flex items-center justify-center w-10 h-10 rounded-full bg-white/10 backdrop-blur-md border border-white/20 shadow-inner"
           }
         >
@@ -741,13 +825,13 @@ function LessonCard({
         <h3 className="text-xl font-bold text-white mb-2 tracking-wide">
           {title}
         </h3>
-        <p className="text-sm text-gray-400 font-medium line-clamp-2 leading-relaxed">
+        <p className="text-sm text-gray-300/80 font-medium line-clamp-2 leading-relaxed">
           {desc}
         </p>
       </div>
 
-      <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white/10 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-24 h-24 bg-black/20 rounded-full blur-2xl pointer-events-none"></div>
+      <div className="absolute top-0 right-0 -mt-8 -mr-8 w-32 h-32 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-0 -mb-8 -ml-8 w-24 h-24 bg-black/20 rounded-full blur-2xl pointer-events-none" />
     </Link>
   );
 }

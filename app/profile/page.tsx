@@ -30,6 +30,10 @@ type MeUser = {
   createdAt: string;
   updatedAt: string;
   avatarUrl?: string | null;
+  level?: {
+    code: string;
+    name: string;
+  } | null;
 };
 
 function formatDate(iso: string) {
@@ -65,8 +69,8 @@ export default function ProfilePage() {
     msg?.type === "error"
       ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-500/20"
       : msg?.type === "success"
-      ? "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-500/20"
-      : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-500/20";
+        ? "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-500/20"
+        : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-500/20";
 
   async function loadMe() {
     setLoading(true);
@@ -343,8 +347,20 @@ export default function ProfilePage() {
                       loading
                         ? "..."
                         : user?.emailVerifiedAt
-                        ? "Đã xác thực"
-                        : "Chưa xác thực"
+                          ? "Đã xác thực"
+                          : "Chưa xác thực"
+                    }
+                  />
+
+                  <InfoCard
+                    icon={<GraduationCap className="w-4 h-4" />}
+                    label="Cấp độ"
+                    value={
+                      loading
+                        ? "..."
+                        : user?.level?.code
+                          ? `${user.level.code} - ${user.level.name}`
+                          : "Chưa xếp loại"
                     }
                   />
                 </div>

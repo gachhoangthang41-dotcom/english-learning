@@ -13,48 +13,46 @@ export default function ResetPasswordPage() {
   const router = useRouter();
   const sp = useSearchParams();
 
-  // Lấy từ link email: /reset-password?email=...&token=...
+  // ✅ Lấy từ link: /reset-password?email=...&token=...
   const emailFromQuery = (sp.get("email") || "").trim().toLowerCase();
   const tokenFromQuery = (sp.get("token") || "").trim();
 
-  const [email, setEmail] = React.useState(emailFromQuery);
-  const [token, setToken] = React.useState(tokenFromQuery);
+  // ✅ Không cho user sửa email/token -> chỉ dùng state ẩn
+  const [email] = React.useState(emailFromQuery);
+  const [token] = React.useState(tokenFromQuery);
 
   const [password, setPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
   const [showPw, setShowPw] = React.useState(false);
 
   const [submitting, setSubmitting] = React.useState(false);
-  const [msg, setMsg] = React.useState<{ type: MsgType; text: string } | null>(null);
+  const [msg, setMsg] = React.useState<{ type: MsgType; text: string } | null>(
+    null
+  );
 
   function showMessage(type: MsgType, text: string) {
     setMsg({ type, text });
   }
 
-  // nếu query không có email, thử lấy từ localStorage (optional)
-  React.useEffect(() => {
-    if (emailFromQuery) return;
-    try {
-      const saved = localStorage.getItem("pending_reset_email") || "";
-      if (saved) setEmail(saved);
-    } catch {}
-  }, [emailFromQuery]);
+  const isInvalidLink = !email || !token;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (submitting) return;
 
-    const eMail = (email || "").trim().toLowerCase();
-    const t = (token || "").trim();
-
-    if (!eMail || !t) {
-      showMessage("error", "Thiếu email hoặc token. Vui lòng mở link từ email hoặc gửi lại link mới.");
+    if (isInvalidLink) {
+      showMessage(
+        "error",
+        "Link đặt lại mật khẩu không hợp lệ hoặc thiếu token. Vui lòng gửi lại link mới."
+      );
       return;
     }
+
     if (!password || password.length < 7 || password.length > 14) {
       showMessage("error", "Mật khẩu phải từ 7 đến 14 ký tự.");
       return;
     }
+
     if (password !== confirm) {
       showMessage("error", "Mật khẩu xác nhận không khớp.");
       return;
@@ -68,7 +66,12 @@ export default function ResetPasswordPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ email: eMail, token: t, password }),
+        body: JSON.stringify({
+          email,
+          token,
+          newPassword: password,
+          confirmPassword: confirm,
+        }),
       });
 
       const data = await res.json().catch(() => null);
@@ -78,11 +81,10 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      showMessage("success", data?.message || "Đặt lại mật khẩu thành công! Chuyển sang đăng nhập...");
-
-      try {
-        localStorage.removeItem("pending_reset_email");
-      } catch {}
+      showMessage(
+        "success",
+        data?.message || "Đặt lại mật khẩu thành công! Chuyển sang đăng nhập..."
+      );
 
       setTimeout(() => router.push("/login"), 700);
     } catch (err) {
@@ -155,43 +157,56 @@ export default function ResetPasswordPage() {
               <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight">
                 Đặt lại mật khẩu
               </h1>
+
               <p className="text-muted text-base leading-relaxed max-w-[420px] mx-auto">
-                Nhập mật khẩu mới cho tài khoản{" "}
-                {email ? <span className="text-white/90 font-medium">{email}</span> : null}
+                {email ? (
+                  <>
+                    Nhập mật khẩu mới cho tài khoản{" "}
+                    <span className="text-white/90 font-medium">{email}</span>
+                  </>
+                ) : (
+                  "Không tìm thấy email trong link."
+                )}
               </p>
             </div>
           </div>
 
-          {/* Nếu thiếu token/email thì vẫn cho paste vào */}
+          {/* ✅ Nếu link sai (thiếu token/email) => khóa form */}
           <form onSubmit={onSubmit} className="flex flex-col gap-5 mt-8">
+            {isInvalidLink ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 text-red-700 dark:border-red-500/20 dark:bg-red-900/20 dark:text-red-400 p-4 text-sm">
+                Link đặt lại mật khẩu không hợp lệ hoặc đã thiếu token.
+                <div className="mt-3 flex gap-3">
+                  <Link
+                    href="/forgot-password"
+                    className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition-colors"
+                  >
+                    Gửi lại link mới
+                  </Link>
+                  <Link
+                    href="/login"
+                    className="px-4 py-2 rounded-lg border border-white/10 text-slate-200 hover:text-blue-400 transition-colors"
+                  >
+                    Về đăng nhập
+                  </Link>
+                </div>
+              </div>
+            ) : null}
+
+            {/* ✅ Email hiển thị readonly (không cho sửa) */}
             <div className="flex flex-col gap-2">
               <label className="text-base font-semibold">Email</label>
               <input
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@example.com"
-                autoComplete="email"
+                readOnly
                 className="w-full rounded-lg h-14 px-4 text-base
-                           border border-black/15 bg-white text-slate-900 placeholder:text-slate-400
-                           focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
-                           dark:border-[#324d67] dark:bg-[#192633] dark:text-white dark:placeholder:text-[#92adc9]
-                           transition-all"
+                           border border-black/15 bg-white text-slate-700 placeholder:text-slate-400
+                           dark:border-[#324d67] dark:bg-[#192633] dark:text-white/90
+                           opacity-90"
               />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <label className="text-base font-semibold">Token</label>
-              <input
-                value={token}
-                onChange={(e) => setToken(e.target.value)}
-                placeholder="Dán token từ link email (nếu cần)"
-                className="w-full rounded-lg h-14 px-4 text-base
-                           border border-black/15 bg-white text-slate-900 placeholder:text-slate-400
-                           focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
-                           dark:border-[#324d67] dark:bg-[#192633] dark:text-white dark:placeholder:text-[#92adc9]
-                           transition-all"
-              />
-            </div>
+            {/* ✅ KHÔNG HIỂN THỊ TOKEN Ở ĐÂY */}
 
             <div className="flex flex-col gap-2">
               <label className="text-base font-semibold">Mật khẩu mới</label>
@@ -202,23 +217,29 @@ export default function ResetPasswordPage() {
                   type={showPw ? "text" : "password"}
                   placeholder="••••••••"
                   autoComplete="new-password"
+                  disabled={isInvalidLink || submitting}
                   className="w-full h-14 px-4 text-base
                              border border-r-0 border-black/15 bg-white text-slate-900 placeholder:text-slate-400
                              focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
                              dark:border-[#324d67] dark:bg-[#192633] dark:text-white dark:placeholder:text-[#92adc9]
-                             transition-all"
+                             transition-all disabled:opacity-60"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPw((v) => !v)}
+                  disabled={isInvalidLink || submitting}
                   className="px-4 grid place-items-center
                              border border-l-0 border-black/15 bg-white text-slate-600 hover:bg-slate-50
                              dark:border-[#324d67] dark:bg-[#192633] dark:text-[#92adc9] dark:hover:bg-[#233648]
-                             transition-colors"
+                             transition-colors disabled:opacity-60"
                   aria-label={showPw ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                   title="Hiện/Ẩn mật khẩu"
                 >
-                  {showPw ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPw ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
                 </button>
               </div>
               <p className="text-xs text-muted">Mật khẩu 7–14 ký tự.</p>
@@ -232,11 +253,12 @@ export default function ResetPasswordPage() {
                 type={showPw ? "text" : "password"}
                 placeholder="••••••••"
                 autoComplete="new-password"
+                disabled={isInvalidLink || submitting}
                 className="w-full rounded-lg h-14 px-4 text-base
                            border border-black/15 bg-white text-slate-900 placeholder:text-slate-400
                            focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
                            dark:border-[#324d67] dark:bg-[#192633] dark:text-white dark:placeholder:text-[#92adc9]
-                           transition-all"
+                           transition-all disabled:opacity-60"
               />
             </div>
 
@@ -251,7 +273,7 @@ export default function ResetPasswordPage() {
 
             <button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || isInvalidLink}
               className="
                 flex w-full items-center justify-center overflow-hidden rounded-lg h-12 px-5
                 bg-blue-600 hover:bg-blue-700 text-white text-base font-bold

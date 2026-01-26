@@ -15,7 +15,9 @@ export async function GET(req: Request) {
   const remember = (await cookies()).get("oauth_remember")?.value === "1";
 
   if (!code || !state || !savedState || savedState !== state) {
-    return NextResponse.redirect(`${process.env.APP_URL}/login?error=oauth_state_invalid`);
+    return NextResponse.redirect(
+      `${process.env.APP_URL}/login?error=oauth_state_invalid`
+    );
   }
 
   const redirectUri = `${process.env.APP_URL}/api/oauth/google/callback`;
@@ -37,52 +39,120 @@ export async function GET(req: Request) {
   const accessToken = tokenData?.access_token;
 
   if (!accessToken) {
-    return NextResponse.redirect(`${process.env.APP_URL}/login?error=oauth_token_failed`);
+    return NextResponse.redirect(
+      `${process.env.APP_URL}/login?error=oauth_token_failed`
+    );
   }
 
-  // 2) Lấy profile
-  const profileRes = await fetch("https://www.googleapis.com/oauth2/v2/userinfo", {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
+  // 2) Lấy profile (v2 userinfo có field "id" = sub/googleId)
+  const profileRes = await fetch(
+    "https://www.googleapis.com/oauth2/v2/userinfo",
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
 
   const profile = await profileRes.json().catch(() => null);
 
-  const email = String(profile?.email || "").trim();
+  const email = String(profile?.email || "").trim().toLowerCase();
   const name = String(profile?.name || "").trim();
   const picture = String(profile?.picture || "").trim();
 
+  // ✅ cái này quan trọng nhất
+  const googleId = String(profile?.id || "").trim();
+
   if (!email) {
-    return NextResponse.redirect(`${process.env.APP_URL}/login?error=oauth_no_email`);
+    return NextResponse.redirect(
+      `${process.env.APP_URL}/login?error=oauth_no_email`
+    );
+  }
+  if (!googleId) {
+    return NextResponse.redirect(
+      `${process.env.APP_URL}/login?error=oauth_no_google_id`
+    );
   }
 
-  // 3) Upsert User (giữ schema của bạn)
-  const user = await prisma.user.upsert({
-    where: { email },
-    update: {
-      displayName: name || undefined,
-      avatarUrl: picture || undefined,
-      emailVerifiedAt: new Date(),
-    },
-    create: {
-      email,
-      username: null,
-      displayName: name || null,
-      avatarUrl: picture || null,
-      emailVerifiedAt: new Date(),
-      role: "user",
-      passwordHash: null,
-    },
+  // ✅ A) Ưu tiên 1: đã có googleSub => login đúng user đó
+  const byGoogle = await prisma.user.findUnique({
+    where: { googleSub: googleId },
+    select: { id: true, email: true, username: true, role: true },
   });
 
-  // 4) Sign session theo format bạn đang dùng
-  const maxAge = remember ? 60 * 60 * 24 * 30 : 60 * 60 * 2; // 30 ngày hoặc 2h
+  let userId: string;
+  let usernameForSession = "";
+  let roleForSession = "user";
+
+  if (byGoogle) {
+    userId = byGoogle.id;
+    usernameForSession = byGoogle.username ?? byGoogle.email;
+    roleForSession = byGoogle.role;
+  } else {
+    // ✅ B) Ưu tiên 2: tìm theo email (insensitive để không bị trùng hoa thường)
+    const byEmail = await prisma.user.findFirst({
+      where: {
+        email: {
+          equals: email,
+          mode: "insensitive",
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        role: true,
+        displayName: true,
+        avatarUrl: true,
+      },
+    });
+
+    if (byEmail) {
+      // ✅ Link googleSub vào user cũ
+      await prisma.user.update({
+        where: { id: byEmail.id },
+        data: {
+          googleSub: googleId,
+          oauthProvider: "google",
+
+          // chỉ update nếu user đang trống
+          displayName: byEmail.displayName || name || undefined,
+          avatarUrl: byEmail.avatarUrl || picture || undefined,
+          emailVerifiedAt: new Date(),
+
+          // ép email về lowercase luôn để hết trùng
+          email: byEmail.email.toLowerCase(),
+        },
+      });
+
+      userId = byEmail.id;
+      usernameForSession = byEmail.username ?? byEmail.email;
+      roleForSession = byEmail.role;
+    } else {
+      // ✅ C) Chưa có email => tạo user mới
+      const created = await prisma.user.create({
+        data: {
+          email,
+          username: null,
+          displayName: name || null,
+          avatarUrl: picture || null,
+          emailVerifiedAt: new Date(),
+          role: "user",
+          passwordHash: null,
+
+          googleSub: googleId,
+          oauthProvider: "google",
+        },
+        select: { id: true, username: true, email: true, role: true },
+      });
+
+      userId = created.id;
+      usernameForSession = created.username ?? created.email;
+      roleForSession = created.role;
+    }
+  }
+
+  // 3) Session cookie
+  const maxAge = remember ? 60 * 60 * 24 * 30 : 60 * 60 * 2;
 
   const token = await createSessionToken(
-    {
-      userId: user.id,
-      username: user.username ?? user.email, // ✅ OAuth user chưa có username
-      role: user.role,
-    },
+    { userId, username: usernameForSession, role: roleForSession },
     maxAge
   );
 
@@ -94,6 +164,7 @@ export async function GET(req: Request) {
     maxAge,
   });
 
+  // clear oauth cookies
   (await cookies()).set("oauth_state", "", { path: "/", maxAge: 0 });
   (await cookies()).set("oauth_remember", "", { path: "/", maxAge: 0 });
 

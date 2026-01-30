@@ -112,11 +112,11 @@ export default function MarketingPage() {
                   <GraduationCap className="w-10 h-10 sm:w-11 sm:h-11" />
                 </div>
 
-                <div className="absolute -right-3 -top-2 sm:-right-4 sm:-top-3 bg-[#0f172a]/85 backdrop-blur-sm p-2.5 rounded-full border border-white/10 shadow-lg glass-card">
+                <div className="absolute -right-3 -top-2 sm:-right-4 sm:-top-3 bg-slate-800 dark:bg-[#0f172a]/85 backdrop-blur-sm p-2.5 rounded-full border border-slate-700 dark:border-white/10 shadow-lg">
                   <Mic className="w-5 h-5 text-slate-200" />
                 </div>
 
-                <div className="absolute -left-3 bottom-2 sm:-left-4 sm:bottom-4 bg-[#0f172a]/85 backdrop-blur-sm p-2.5 rounded-full border border-white/10 shadow-lg glass-card">
+                <div className="absolute -left-3 bottom-2 sm:-left-4 sm:bottom-4 bg-slate-800 dark:bg-[#0f172a]/85 backdrop-blur-sm p-2.5 rounded-full border border-slate-700 dark:border-white/10 shadow-lg">
                   <NotebookPen className="w-5 h-5 text-slate-200" />
                 </div>
               </div>
@@ -132,7 +132,7 @@ export default function MarketingPage() {
                 </span>
               </h1>
 
-              <p className="text-slate-400 text-base sm:text-xl leading-relaxed max-w-[52ch] mx-auto">
+              <p className="text-[color:var(--fg)] text-base sm:text-xl leading-relaxed max-w-[52ch] mx-auto">
                 Nền tảng chuyên sâu về{" "}
                 <span className="text-blue-400 font-semibold">Shadowing</span> và{" "}
                 <span className="text-cyan-400 font-semibold">Dictation</span>.
@@ -168,18 +168,18 @@ export default function MarketingPage() {
                 </span>
               </Link>
 
-   <Link
-  href="/login"
-  className="
+              <Link
+                href="/login"
+                className="
     w-full h-13 sm:h-14 flex items-center justify-center rounded-xl
     glass-card
     hover:bg-black/5 dark:hover:bg-white/10
     !text-[color:var(--fg)]
     font-semibold transition
   "
->
-  Đã có tài khoản? Đăng nhập
-</Link>
+              >
+                Đã có tài khoản? Đăng nhập
+              </Link>
             </div>
 
             {/* Footer note */}

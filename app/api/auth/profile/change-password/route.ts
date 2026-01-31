@@ -27,6 +27,10 @@ export async function POST(req: Request) {
     const user = await prisma.user.findUnique({ where: { id: sess.userId } });
     if (!user) return NextResponse.json({ status: "error", message: "Không tìm thấy tài khoản." }, { status: 404 });
 
+    if (!user.passwordHash) {
+      return NextResponse.json({ status: "error", message: "Tài khoản không có mật khẩu." }, { status: 400 });
+    }
+
     const ok = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!ok) return NextResponse.json({ status: "error", message: "Mật khẩu hiện tại không đúng." }, { status: 400 });
 

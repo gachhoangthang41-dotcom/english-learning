@@ -128,6 +128,9 @@ model User {
   // ✅ your existing tokens + progress
   tokens   Token[]
   progress UserExerciseProgress[]
+  learnedWords LearningProgress[]
+  // ✅ số lượng từ đã học (dùng để hiển thị nhanh, tránh tính toán mỗi lần)
+  learnedWordsCount Int @default(0)
 
   // ✅ NextAuth relations
   accounts Account[]
@@ -245,4 +248,22 @@ model UserExerciseProgress {
   @@unique([userId, exerciseId])
   @@index([userId, status])
   @@index([exerciseId])
+}
+
+// ✅ Track learned vocabulary from flashcards
+model LearningProgress {
+  id       String @id @default(cuid())
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  level    String // "A1", "A2", "B1", "B2"
+  wordId   Int    // ID của từ trong flashcard
+  word     String // từ tiếng Anh (e.g., "Hello")
+  meaning  String // nghĩa tiếng Việt
+
+  learnedAt DateTime @default(now())
+
+  @@unique([userId, level, wordId])
+  @@index([userId, learnedAt])
+  @@index([userId, level])
 }

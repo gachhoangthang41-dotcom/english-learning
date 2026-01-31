@@ -53,7 +53,7 @@ export async function GET() {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, dailyGoalMin: true },
+      select: { id: true, dailyGoalMin: true, learnedWordsCount: true },
     });
 
     if (!user) {
@@ -121,15 +121,18 @@ export async function GET() {
 
     const hoursStudied = Math.round((totalWeekMin / 60) * 10) / 10; // 1 số thập phân
 
-    // ✅ 3) Words learned (TẠM): số bài COMPLETED trong 7 ngày gần nhất
-    const from7 = addDays(today, -6);
-    const completedCount = await prisma.userExerciseProgress.count({
-      where: {
-        userId,
-        status: "COMPLETED",
-        updatedAt: { gte: from7 },
-      },
-    });
+    // ✅ 3) Words learned - đếm unique từ từ LearningProgress
+    // Dùng learnedWordsCount nếu có, nếu không thì count từ DB
+    let wordsLearnedCount = user.learnedWordsCount || 0;
+    
+    // Fallback: nếu learnedWordsCount = 0, đếm từ LearningProgress
+    if (wordsLearnedCount === 0) {
+      wordsLearnedCount = await prisma.learningProgress.count({
+        where: {
+          userId,
+        },
+      });
+    }
 
     // ✅ 4) Daily goal %
     const todayMin = dailyMinutes[keyDay(today)] || 0;
@@ -143,7 +146,7 @@ export async function GET() {
         status: "success",
         stats: {
           streakDays,
-          wordsLearned: completedCount,
+          wordsLearned: wordsLearnedCount,
           hoursStudied,
           dailyGoalPct,
           weekMinutes: weekMinutesArr, // 7 ngày

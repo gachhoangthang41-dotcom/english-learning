@@ -27,6 +27,7 @@ import {
   Signal,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
+import Flashcards from "@/components/Flashcards";
 
 // ---------------- TYPES ----------------
 type MsgType = "error" | "success" | "info";
@@ -525,6 +526,9 @@ export default function HomePage() {
                 ))}
               </div>
             </section>
+
+            {/* FLASHCARDS */}
+            <Flashcards />
 
             {/* RECOMMENDED + ACTIVITY */}
             <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">

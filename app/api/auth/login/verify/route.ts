@@ -62,7 +62,7 @@ export async function POST(req: Request) {
 
     const maxAge = remember ? 30 * 24 * 60 * 60 : undefined; // seconds
     const jwt = await signSession(
-      { userId: user.id, username: user.username, role: user.role },
+      { userId: user.id, username: String(user.username || ""), role: user.role },
       maxAge
     );
 

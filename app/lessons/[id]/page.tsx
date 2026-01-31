@@ -87,11 +87,11 @@ export default function LessonDetailPage({ params }: { params: Promise<{ id: str
           <div className="bg-card p-4 rounded-2xl min-w-[200px] shadow-sm">
             <div className="flex justify-between text-sm mb-2 font-medium">
               <span className="text-muted-foreground">Tiến độ</span>
-              <span className="text-primary">{progress}%</span>
+              <span className="text-green-600 dark:text-green-400 font-bold">{progress}%</span>
             </div>
             <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
               <div
-                className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+                className="h-full bg-green-500 rounded-full transition-all duration-500 ease-out shadow-sm shadow-green-500/30"
                 style={{ width: `${progress}%` }}
               />
             </div>

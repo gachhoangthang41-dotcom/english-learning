@@ -405,37 +405,37 @@ export default function HomePage() {
               {msg?.text}
             </div>
 
-            {/* HERO - GIỮ NGUYÊN NỀN TỐI (Vì là Banner) */}
-            <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600/20 via-[#0b1220] to-[#020617] p-6 lg:p-8">
-              <div className="absolute -top-24 -left-24 size-[380px] rounded-full bg-blue-500/20 blur-[90px]" />
-              <div className="absolute -bottom-28 -right-24 size-[420px] rounded-full bg-cyan-500/10 blur-[100px]" />
+            {/* HERO - Banner gradient */}
+            <section className="hero-banner relative overflow-hidden rounded-3xl p-6 lg:p-8">
+              <div className="absolute -top-24 -left-24 size-[380px] rounded-full bg-white/20 dark:bg-blue-500/20 blur-[90px]" />
+              <div className="absolute -bottom-28 -right-24 size-[420px] rounded-full bg-pink-300/30 dark:bg-cyan-500/10 blur-[100px]" />
 
               <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                 <div>
-                  <h1 className="text-3xl md:text-4xl font-black tracking-tight text-white">
-                    Welcome back! <span className="inline-block">👋</span>
+                  <h1 className="text-3xl md:text-4xl font-black tracking-tight">
+                    <span className="text-white">Welcome back!</span> <span className="inline-block">👋</span>
                   </h1>
-                  <p className="text-slate-300 mt-2">
+                  <p className="text-white/90 dark:text-slate-300 mt-2">
                     Bạn đang có{" "}
-                    <span className="text-blue-400 font-bold">{streakText}</span>. Giữ nhịp mỗi ngày nhé!
+                    <span className="text-yellow-300 dark:text-blue-400 font-bold">{streakText}</span>. Giữ nhịp mỗi ngày nhé!
                   </p>
                 </div>
 
                 <div className="flex items-center gap-4">
                   <div className="hidden sm:block text-right">
-                    <div className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                    <div className="text-xs text-white/80 dark:text-slate-400 font-semibold uppercase tracking-wider">
                       Daily Goal
                     </div>
 
                     {/* ✅ progress dynamic */}
-                    <div className="mt-2 w-40 h-2 rounded-full bg-white/10 overflow-hidden">
+                    <div className="mt-2 w-40 h-2 rounded-full bg-white/20 dark:bg-white/10 overflow-hidden">
                       <div
-                        className="h-full bg-blue-500 rounded-full transition-all"
+                        className="h-full bg-yellow-400 dark:bg-blue-500 rounded-full transition-all"
                         style={{ width: `${dailyGoalPct}%` }}
                       />
                     </div>
 
-                    <div className="mt-2 text-[11px] text-slate-400">
+                    <div className="mt-2 text-[11px] text-white/70 dark:text-slate-400">
                       {loadingStats
                         ? "..."
                         : `${stats?.todayMin || 0} / ${stats?.dailyGoalMin || 0} phút`}
@@ -455,21 +455,21 @@ export default function HomePage() {
             {/* STATS (dynamic) */}
             <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard
-                icon={<Flame className="w-5 h-5 text-orange-500 dark:text-orange-300" />}
+                icon={<Flame className="w-5 h-5 text-white dark:text-orange-300" />}
                 badge={loadingStats ? "..." : `${stats?.todayMin || 0} min`}
                 badgeTone="emerald"
                 label="Weekly Streak"
                 value={loadingStats ? "..." : `${stats?.streakDays || 0} Days`}
               />
               <StatCard
-                icon={<GraduationCap className="w-5 h-5 text-blue-600 dark:text-blue-300" />}
+                icon={<GraduationCap className="w-5 h-5 text-white dark:text-blue-300" />}
                 badge={loadingStats ? "..." : "This week"}
                 badgeTone="emerald"
                 label="Words Learned"
                 value={loadingStats ? "..." : `${stats?.wordsLearned || 0}`}
               />
               <StatCard
-                icon={<Timer className="w-5 h-5 text-purple-600 dark:text-purple-300" />}
+                icon={<Timer className="w-5 h-5 text-white dark:text-purple-300" />}
                 badge={loadingStats ? "..." : `Goal ${stats?.dailyGoalMin || 0}m`}
                 badgeTone="emerald"
                 label="Hours Studied"
@@ -586,24 +586,24 @@ export default function HomePage() {
                   Activity This Week
                 </h2>
 
-                <div className="rounded-2xl bg-card p-5">
+                <div className="rounded-2xl bg-white dark:bg-card p-5 shadow-md dark:shadow-none border border-purple-100 dark:border-transparent">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="text-sm text-muted-foreground font-semibold uppercase tracking-wider">
+                      <div className="text-sm text-gray-600 dark:text-muted-foreground font-semibold uppercase tracking-wider">
                         Total Time
                       </div>
 
-                      <div className="mt-2 text-2xl font-black text-foreground">
+                      <div className="mt-2 text-2xl font-black text-gray-900 dark:text-foreground">
                         {loadingStats ? "..." : `${stats?.hoursStudied || 0}h`}
                       </div>
 
-                      <div className="mt-1 text-xs text-muted-foreground">
+                      <div className="mt-1 text-xs text-gray-500 dark:text-muted-foreground">
                         {loadingStats ? "" : "Last 7 days"}
                       </div>
                     </div>
 
-                    <div className="size-10 rounded-xl bg-blue-500/10 ring-1 ring-border grid place-items-center">
-                      <TrendingUp className="w-5 h-5 text-blue-600 dark:text-blue-300" />
+                    <div className="size-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 dark:bg-blue-500/10 dark:from-transparent dark:to-transparent shadow-lg shadow-purple-500/30 dark:shadow-none dark:ring-1 dark:ring-border grid place-items-center">
+                      <TrendingUp className="w-5 h-5 text-white dark:text-blue-600" />
                     </div>
                   </div>
 
@@ -641,14 +641,14 @@ export default function HomePage() {
 
                 <Link
                   href="/help"
-                  className="rounded-2xl bg-card p-4 hover:bg-secondary transition flex items-center gap-3"
+                  className="rounded-2xl bg-white dark:bg-card p-4 hover:shadow-lg dark:hover:bg-secondary transition shadow-md dark:shadow-none border border-purple-100 dark:border-transparent flex items-center gap-3"
                 >
-                  <div className="size-10 rounded-xl bg-secondary ring-1 ring-border grid place-items-center">
-                    <HelpCircle className="w-5 h-5 text-foreground" />
+                  <div className="size-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 dark:bg-secondary dark:from-transparent dark:to-transparent shadow-lg shadow-purple-500/30 dark:shadow-none dark:ring-1 dark:ring-border grid place-items-center">
+                    <HelpCircle className="w-5 h-5 text-white dark:text-foreground" />
                   </div>
                   <div className="leading-tight">
-                    <div className="font-bold text-foreground">Need help?</div>
-                    <div className="text-xs text-muted-foreground">
+                    <div className="font-bold text-gray-900 dark:text-foreground">Need help?</div>
+                    <div className="text-xs text-gray-500 dark:text-muted-foreground">
                       Xem hướng dẫn sử dụng
                     </div>
                   </div>
@@ -715,9 +715,9 @@ function StatCard({
         : "text-violet-700 bg-violet-100 dark:text-violet-300 dark:bg-violet-500/20";
 
   return (
-    <div className="rounded-2xl bg-card p-5 hover:-translate-y-0.5 transition shadow-sm border border-sky-200 dark:border-border">
+    <div className="rounded-2xl bg-white dark:bg-slate-800 p-5 hover:-translate-y-0.5 transition shadow-md border border-purple-100 dark:border-slate-700">
       <div className="flex items-start justify-between">
-        <div className="size-10 rounded-xl bg-[#0f172a] ring-1 ring-slate-600 grid place-items-center">
+        <div className="size-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-purple-500/30 grid place-items-center">
           {icon}
         </div>
 
@@ -727,8 +727,8 @@ function StatCard({
       </div>
 
       <div className="mt-4">
-        <div className="text-sm text-muted-foreground font-medium">{label}</div>
-        <div className="text-2xl font-extrabold mt-1 text-foreground">{value}</div>
+        <div className="text-sm text-gray-600 dark:text-gray-300 font-medium">{label}</div>
+        <div className="text-2xl font-extrabold mt-1 text-gray-900 dark:text-white">{value}</div>
       </div>
     </div>
   );
@@ -752,37 +752,37 @@ function RecommendedCard({
   icon: React.ReactNode;
   href: string;
 }) {
-  const bg = bgTone === "slate" ? "from-slate-100 dark:from-slate-600/25" : "from-slate-200 dark:from-slate-700/25";
+  const bg = bgTone === "slate" ? "from-indigo-100 dark:from-slate-600/25" : "from-purple-100 dark:from-slate-700/25";
 
   return (
     <Link
       href={href}
-      className="group flex flex-col rounded-2xl bg-card overflow-hidden hover:-translate-y-0.5 transition shadow-sm"
+      className="group flex flex-col rounded-2xl bg-white dark:bg-slate-800 overflow-hidden hover:-translate-y-0.5 transition shadow-md border border-purple-100 dark:border-slate-700"
     >
       <div className="h-32 relative overflow-hidden">
         <div
           className={cx(
             "absolute inset-0 bg-gradient-to-br",
             bg,
-            "via-background to-background"
+            "via-white dark:via-slate-800 to-white dark:to-slate-800"
           )}
         />
         <div className="absolute inset-0 opacity-70 bg-[radial-gradient(circle_at_70%_30%,rgba(255,255,255,0.12),transparent_55%)]" />
 
         <div className="absolute left-3 bottom-3 flex items-center gap-2">
-          <span className="px-2 py-1 rounded bg-black/50 border border-white/10 text-xs font-semibold text-white">
+          <span className="px-2 py-1 rounded bg-indigo-600 border border-indigo-500 text-xs font-semibold text-white">
             {tag}
           </span>
 
-          <span className="px-2 py-1 rounded bg-black/35 border border-white/10 text-xs font-semibold inline-flex items-center gap-1 text-slate-200">
+          <span className="px-2 py-1 rounded bg-purple-600 border border-purple-500 text-xs font-semibold inline-flex items-center gap-1 text-white">
             {icon} {tag === "Shadowing" ? "Speak" : "Write"}
           </span>
         </div>
       </div>
 
       <div className="p-4 space-y-2">
-        <h3 className="font-extrabold text-lg text-foreground">{title}</h3>
-        <div className="flex items-center gap-3 text-muted-foreground text-sm">
+        <h3 className="font-extrabold text-lg text-gray-900 dark:text-white">{title}</h3>
+        <div className="flex items-center gap-3 text-gray-600 dark:text-gray-300 text-sm">
           {metaLeft}
           {metaRight}
         </div>

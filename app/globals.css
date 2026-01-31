@@ -10,6 +10,10 @@
 
   --color-card: var(--card);
   --color-card-border: var(--card-border);
+
+  /* Background colors for Tailwind v4 */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
 }
 
 /* ===================== BASE THEME (LIGHT default) ===================== */
@@ -18,7 +22,7 @@
   /* Báo cho trình duyệt biết đây là giao diện sáng */
 
   /* Màu nền Sáng */
-  --bg: #c6cfd7;
+  --bg: #F5F3EE;
   --fg: #071d33;
 
   --muted: #5abac9;
@@ -44,12 +48,21 @@ html.dark {
   --card-border: rgba(255, 255, 255, 0.10);
 }
 
+/* ===================== HERO BANNER GRADIENT ===================== */
+/* Light mode: Purple-Pink gradient */
+.hero-banner {
+  background: linear-gradient(to bottom right, #4f46e5, #9333ea, #ec4899) !important;
+}
+
+/* Dark mode: Dark Blue gradient */
+html.dark .hero-banner {
+  background: linear-gradient(to bottom right, rgba(37, 99, 235, 0.2), #0b1220, #020617) !important;
+}
+
 @layer base {
   :root {
-    /* NỀN SÁNG: Xám nhạt */
-    --background: 0 0% 50%;
-    /* Xám 50% */
-    /* Xám nhạt dễ nhìn */
+    /* NỀN SÁNG: Xám xanh dịu (phù hợp light mode) */
+    --background: 210 20% 92%;
 
     /* Cards xanh nhạt tươi mát */
     --foreground: 220 25% 20%;
@@ -138,9 +151,9 @@ html.dark {
 html:not(.dark) .landing-bg__base {
   background: linear-gradient(180deg,
       #fcfdff 0%,
-      #f5f8fc 34%,
-      #f8f5fc 62%,
-      #ffffff 100%);
+      #e1e6ea 34%,
+      #e3e2e6 62%,
+      #e4e0e0 100%);
 }
 
 /* Blobs (Hiệu ứng ánh sáng) */

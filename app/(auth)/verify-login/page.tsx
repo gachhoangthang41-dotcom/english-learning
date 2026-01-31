@@ -160,7 +160,7 @@ export default function VerifyLoginPage() {
         try {
           localStorage.removeItem(PENDING_LOGIN_EMAIL_KEY);
           localStorage.removeItem(PENDING_LOGIN_REMEMBER_KEY);
-        } catch {}
+        } catch { }
 
         router.push(data?.redirect || "/");
         return;
@@ -212,8 +212,8 @@ export default function VerifyLoginPage() {
     msg?.type === "error"
       ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-500/20"
       : msg?.type === "success"
-      ? "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-500/20"
-      : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-500/20";
+        ? "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-500/20"
+        : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-500/20";
 
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
@@ -259,7 +259,7 @@ export default function VerifyLoginPage() {
               <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight">Xác thực đăng nhập</h1>
               <p className="text-muted text-base leading-relaxed max-w-[360px] mx-auto">
                 Nhập mã 6 chữ số đã gửi tới email{" "}
-                {email ? <span className="text-white/90 font-medium">{email}</span> : <span className="text-rose-300 font-medium">[chưa có email]</span>}
+                {email ? <span className="font-medium" style={{ color: 'var(--fg)' }}>{email}</span> : <span className="text-rose-300 font-medium">[chưa có email]</span>}
               </p>
             </div>
           </div>

@@ -5,11 +5,11 @@ import { ChevronLeft, Play, Lock, CheckCircle, Star } from "lucide-react";
 // --- 1. DỮ LIỆU GIẢ (MOCK DATA) ---
 const coursesData: Record<string, any[]> = {
   "PRE-A1": [
-    { id: 1, title: "Unit 1: Luyện Phát Âm Cơ Bản", desc: "Luyện tập phát âm với các câu đơn giản.", status: "active", href: "/pronunciation" },
-    { id: 2, title: "Unit 2: Bảng Chữ Cái & Âm", desc: "Học phát âm từng chữ cái tiếng Anh.", status: "active" },
-    { id: 3, title: "Unit 3: Số Đếm 1-20", desc: "Đếm số và nói số bằng tiếng Anh.", status: "active" },
-    { id: 4, title: "Unit 4: Màu Sắc", desc: "Học từ vựng về màu sắc.", status: "active" },
-    { id: 5, title: "Unit 5: Chào Hỏi Đơn Giản", desc: "Hello, Hi, Goodbye, Thank you.", status: "active" },
+    { id: 1, title: "Lesson 1: How to say 'fleece’, ‘sea’ & ‘machine’", desc: "Luyện tập phát âm ", status: "active", href: "/pronunciation?id=1" },
+    { id: 2, title: "Lesson 2: How to say  ‘kit’, ‘bid’ & ‘him’", desc: "", status: "active", href: "/pronunciation?id=2" },
+    { id: 3, title: "Lesson 3: How to say ‘foot’, ‘put’ & ‘good’", desc: "", status: "active", href: "/pronunciation?id=3" },
+    { id: 4, title: "Lesson 4: How to say ‘dress’, ‘head’ & ‘bed’c", desc: "", status: "active", href: "/pronunciation?id=4" },
+    { id: 5, title: "Lesson 5: How to say ‘bad’, ‘cat’ & ‘map’", desc: " ", status: "active", href: "/pronunciation?id=5" },
   ],
   A1: [
     { id: 1, title: "Unit 1: Greetings & Introductions", desc: "Chào hỏi, giới thiệu bản thân cơ bản.", status: "active" }, // Đang học

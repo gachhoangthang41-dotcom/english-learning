@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { Mic, Volume2, ChevronLeft, CheckCircle2, XCircle, Trophy, RotateCcw, Home, PlayCircle } from "lucide-react";
 import Link from "next/link";
 
@@ -39,6 +40,9 @@ const clean = (str: string) => {
 };
 
 export default function PronunciationPage() {
+    const searchParams = useSearchParams();
+    const exerciseId = searchParams.get("id") || searchParams.get("exerciseId");
+
     const [data, setData] = useState<PronunciationData | null>(null);
     const [loading, setLoading] = useState(true);
     const [sentences, setSentences] = useState<Sentence[]>([]);
@@ -61,7 +65,8 @@ export default function PronunciationPage() {
     useEffect(() => {
         async function loadData() {
             try {
-                const res = await fetch("/api/pronunciation");
+                const apiUrl = exerciseId ? `/api/pronunciation?exerciseId=${exerciseId}` : "/api/pronunciation";
+                const res = await fetch(apiUrl);
                 const json = await res.json();
 
                 if (json) {
@@ -216,6 +221,7 @@ export default function PronunciationPage() {
                 {data?.mediaUrl && (
                     <div className="w-full max-w-2xl aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl ring-1 ring-white/10 mb-4">
                         <video
+                            key={data.mediaUrl}
                             ref={videoRef}
                             src={data.mediaUrl}
                             controls

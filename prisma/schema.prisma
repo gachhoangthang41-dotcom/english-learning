@@ -1,0 +1,274 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+  
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+ 
+}
+
+
+
+enum TokenType {
+  EMAIL_VERIFY
+  LOGIN_2FA
+  PASSWORD_RESET
+}
+
+
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// -------------------- LEARNING (YOUR EXISTING) -------------------- 
+
+enum CefrLevel {
+  A1
+  A2
+  B1
+  B2
+  C1
+  C2
+}
+
+enum SkillType {
+  LISTENING
+  SPEAKING
+}
+
+enum ExerciseType {
+  SHADOWING
+  DICTATION
+  PRONUNCIATION
+  ROLEPLAY
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model User {
+  id              String    @id @default(cuid())
+
+  // ✅ email OAuth luôn có thể null ở vài provider,
+  // nhưng để bạn giữ logic cũ + API /me, mình vẫn giữ email unique
+  // -> với Facebook bạn phải xin quyền email, nếu không có email thì chặn signIn.
+  email           String    @unique
+
+  // ✅ OAuth user lúc đầu chưa có username => cho phép NULL
+  username        String?   @unique
+
+  // ✅ biệt danh (hiển thị trong app)
+  displayName     String?
+
+  // ✅ OAuth user không có password => cho phép NULL
+  passwordHash    String?
+
+  role            String    @default("user")
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  avatarUrl       String?   @db.Text
+  avatarPublicId  String?   @db.Text
+
+  // ✅ mục tiêu học/ngày (phút)
+  dailyGoalMin    Int       @default(15)
+
+  // ✅ level hiện tại của user (để lọc bài theo trình độ)
+  levelId         String?
+  level           Level?    @relation(fields: [levelId], references: [id], onDelete: SetNull)
+
+  // ✅ your existing tokens + progress
+  tokens          Token[]
+  progress        UserExerciseProgress[]
+
+  // ✅ NextAuth relations
+  accounts        Account[]
+  sessions        Session[]
+
+  @@index([levelId])
+}
+
+model Token {
+  id        String    @id @default(cuid())
+  type      TokenType
+  codeHash  String
+  expiresAt DateTime
+  sentAt    DateTime  @default(now())
+  usedAt    DateTime?
+
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, expiresAt])
+  @@index([userId, type, sentAt])
+}
+
+// ✅ Level CEFR (A1..C2)
+model Level {
+  id           String    @id @default(cuid())
+  code         CefrLevel @unique
+  name         String
+  description  String?
+  order        Int       @unique
+
+  recommendedMinPerLesson Int @default(10)
+
+  lessons      Lesson[]
+  users        User[]
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// ✅ Lesson: 1 bài học thuộc 1 level
+model Lesson {
+  id          String     @id @default(cuid())
+  levelId     String
+  level       Level      @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+
+  estimatedMin Int       @default(10)
+  primarySkill SkillType @default(LISTENING)
+
+  order       Int
+  isPublished Boolean   @default(false)
+
+  exercises   Exercise[]
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([levelId, order])
+  @@index([levelId, isPublished])
+}
+
+model Exercise {
+  id           String       @id @default(cuid())
+  lessonId     String
+  lesson       Lesson       @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  type         ExerciseType
+  skill        SkillType
+
+  title        String
+  instruction  String?
+
+  mediaUrl     String?      @db.Text
+  contentJson  Json?
+
+  estimatedMin Int          @default(5)
+
+  order        Int
+  isPublished  Boolean      @default(false)
+
+  progress     UserExerciseProgress[]
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@unique([lessonId, order])
+  @@index([lessonId, isPublished])
+  @@index([type, skill])
+}
+
+model UserExerciseProgress {
+  id            String         @id @default(cuid())
+  userId        String
+  exerciseId    String
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exercise      Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+
+  status        ProgressStatus @default(NOT_STARTED)
+  progressPct   Int            @default(0)
+  timeSpentMin  Int            @default(0)
+
+  score         Float?
+  lastAccessedAt DateTime?
+
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@unique([userId, exerciseId])
+  @@index([userId, status])
+  @@index([exerciseId])
+}
+
+model ClozeExercise {
+  id         String   @id @default(cuid())
+
+  // khóa bài học
+  levelId    String
+  topicId    String
+
+  // để biết bài tập tạo từ transcript nào (tránh bạn sửa transcript mà vẫn lấy bài cũ)
+  transcriptHash String
+
+  // lưu toàn bộ items dạng JSON
+  items      Json
+
+  // metadata
+  model      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([levelId, topicId, transcriptHash])
+  @@index([levelId, topicId])
+}

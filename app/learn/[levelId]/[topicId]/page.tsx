@@ -338,49 +338,49 @@ export default function LearnPage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid lg:grid-cols-[240px_1fr] gap-6 items-start">
+        {/* Main Content Grid */}
+        <div className="w-full grid lg:grid-cols-[200px_1fr] gap-10 items-start">
 
           {/* LEFT SIDEBAR: Progress */}
-          <div className="order-2 lg:order-1 bg-white/5 border border-white/10 p-4 rounded-xl h-fit">
-            <h3 className="font-bold text-slate-200 mb-3 text-sm uppercase tracking-wider">Tiến độ</h3>
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+          <div className="bg-white/5 border border-white/10 p-4 rounded-xl sticky top-4 h-[calc(100vh-40px)] flex flex-col overflow-hidden">
+            <h3 className="font-bold text-slate-200 mb-3 text-sm uppercase tracking-wider flex-shrink-0">Tiến độ</h3>
+            <div className="space-y-2 overflow-y-auto flex-1 pr-1 custom-scrollbar">
               {lesson.segments.map((_, idx) => (
                 <div key={idx} className="flex items-center gap-2 text-xs">
-                  <div className={`w-5 h-5 rounded-full flex items-center justify-center font-bold border ${ // Fixed line
-                    results[idx] === undefined
-                      ? 'border-slate-700 bg-slate-800 text-slate-500'
-                      : results[idx]?.isCorrect
-                        ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
-                        : 'border-rose-500 bg-rose-500/20 text-rose-400'
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold border flex-shrink-0 ${results[idx] === undefined
+                    ? 'border-slate-700 bg-slate-800 text-slate-500'
+                    : results[idx]?.isCorrect
+                      ? 'border-emerald-500 bg-emerald-500/20 text-emerald-400'
+                      : 'border-rose-500 bg-rose-500/20 text-rose-400'
                     }`}>
                     {idx + 1}
                   </div>
-                  <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                  <div className="flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
                     <div className={`h-full ${results[idx] === undefined
                       ? 'w-0'
                       : 'w-full ' + (results[idx]?.isCorrect ? 'bg-emerald-500' : 'bg-rose-500')
                       }`} />
                   </div>
                   {idx === segIndex && !isLessonComplete && (
-                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse flex-shrink-0" />
                   )}
                 </div>
               ))}
             </div>
-            <div className="mt-4 pt-4 border-t border-white/10 text-xs text-slate-500 text-center">
+            <div className="mt-4 pt-4 border-t border-white/10 text-xs text-slate-500 text-center flex-shrink-0">
               {results.filter(r => r).length}/{lesson.segments.length} hoàn thành
             </div>
           </div>
 
-          {/* RIGHT CONTENT: Video & Exercise */}
-          <div className="order-1 lg:order-2 space-y-6">
+          {/* RIGHT CONTENT: Video & Exercise Stacked */}
+          <div className="space-y-6 w-full max-w-6xl mx-auto">
 
             {/* Video Player Container */}
             <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-2xl relative">
               <div className="aspect-video w-full relative bg-black">
                 <video
                   ref={videoRef}
-                  className="absolute inset-0 w-full h-full object-cover"
+                  className="absolute inset-0 w-full h-full object-contain"
                   controls
                   onPlay={() => {
                     if (isVideoPausedForQuestion && exercise.status !== 'graded') {
@@ -409,7 +409,6 @@ export default function LearnPage() {
                     onClick={() => {
                       const prevIndex = segIndex - 1;
                       setSegIndex(prevIndex);
-                      // Reset exercise to idle to let useEffect trigger restoration if exists
                       setExercise({ status: 'idle', userAnswer: '', isCorrect: false, item: null, analysis: null });
                       setIsVideoPausedForQuestion(false);
                       setTimeout(() => videoRef.current?.play(), 100);
@@ -417,7 +416,7 @@ export default function LearnPage() {
                     disabled={isLessonComplete}
                     className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm border border-white/10 transition disabled:opacity-50"
                   >
-                    <SkipBack size={16} /> Đoạn trước
+                    <SkipBack size={16} /> <span className="hidden sm:inline">Đoạn trước</span>
                   </button>
                 )}
 
@@ -426,21 +425,7 @@ export default function LearnPage() {
                   disabled={isLessonComplete}
                   className="flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-sm border border-white/10 transition disabled:opacity-50"
                 >
-                  <RefreshCw size={16} /> Xem lại
-                </button>
-
-                <button
-                  onClick={handleContinue}
-                  disabled={!isVideoPausedForQuestion || exercise.status !== 'graded'}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm border border-white/10 transition disabled:opacity-50 disabled:bg-slate-800 disabled:text-slate-500"
-                >
-                  {exercise.status === 'graded' ? (
-                    <>Tiếp tục <ArrowRight size={16} /></>
-                  ) : (
-                    <>
-                      <Lock size={16} /> Hoàn thành để tiếp tục
-                    </>
-                  )}
+                  <RefreshCw size={16} /> <span className="hidden sm:inline">Xem lại</span>
                 </button>
 
                 <div className="flex-1" />
@@ -456,10 +441,8 @@ export default function LearnPage() {
                 )}
               </div>
             </div>
-          </div>
 
-          {/* EXERCISE SECTION (Full Width) */}
-          <div className="order-3 col-span-1 lg:col-span-2">
+            {/* EXERCISE SECTION */}
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 flex flex-col min-h-[300px]">
               <h3 className="text-base font-bold text-slate-200 mb-4 flex items-center gap-2">
                 <Puzzle size={18} className="text-orange-400" />
@@ -488,7 +471,7 @@ export default function LearnPage() {
                 )}
 
                 {exercise.item && (exercise.status === 'answering' || exercise.status === 'submitting' || exercise.status === 'graded') && (
-                  <div className="max-w-2xl mx-auto space-y-5 animate-in fade-in duration-500">
+                  <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500">
                     {/* Question */}
                     <div className="text-2xl md:text-3xl font-medium leading-relaxed text-slate-100 font-serif text-center">
                       {exercise.item.cloze.split("____").map((part, i, arr) => (
@@ -508,17 +491,17 @@ export default function LearnPage() {
 
                     {/* Interaction Area */}
                     {exercise.status !== 'graded' ? (
-                      <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-white/10">
+                      <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-white/10">
                         <div className="flex-1 relative">
                           <input
                             value={exercise.userAnswer}
                             onChange={(e) => setExercise(prev => ({ ...prev, userAnswer: e.target.value }))}
                             placeholder="Nhập từ còn thiếu..."
-                            className="w-full px-4 py-2.5 rounded-lg bg-[#0f172a] border border-white/20 focus:border-blue-500 outline-none text-base"
+                            className="w-full px-5 py-3 rounded-xl bg-[#0f172a] border border-white/20 focus:border-blue-500 outline-none text-lg"
                             onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                           />
                           {exercise.item.hint && (
-                            <div className="absolute right-3 top-3 text-xs text-slate-500 pointer-events-none hidden sm:block">
+                            <div className="absolute right-3 top-4 text-xs text-slate-500 pointer-events-none hidden sm:block">
                               Gợi ý: {exercise.item.hint}
                             </div>
                           )}
@@ -526,7 +509,7 @@ export default function LearnPage() {
                         <button
                           onClick={handleSubmit}
                           disabled={!exercise.userAnswer.trim() || exercise.status === 'submitting'}
-                          className="px-6 py-2.5 rounded-lg bg-orange-600 hover:bg-orange-500 text-white font-bold transition disabled:opacity-50 flex items-center gap-2 justify-center text-sm"
+                          className="px-8 py-3 rounded-xl bg-orange-600 hover:bg-orange-500 text-white font-bold transition disabled:opacity-50 flex items-center gap-2 justify-center"
                         >
                           {exercise.status === 'submitting' && <Loader2 className="animate-spin" size={16} />}
                           Trả lời
@@ -534,56 +517,67 @@ export default function LearnPage() {
                       </div>
                     ) : (
                       // Analysis View
-                      <div className="pt-4 border-t border-white/10 space-y-4">
-                        <div className={`p-3 rounded-lg flex items-center gap-3 ${exercise.isCorrect ? 'bg-emerald-900/20 border border-emerald-500/30' : 'bg-rose-900/20 border border-rose-500/30'}`}>
-                          {exercise.isCorrect ? <CheckCircle className="text-emerald-400 shrink-0 w-5 h-5" /> : <XCircle className="text-rose-400 shrink-0 w-5 h-5" />}
+                      <div className="pt-6 border-t border-white/10 space-y-5">
+                        <div className={`p-4 rounded-xl flex items-center gap-4 ${exercise.isCorrect ? 'bg-emerald-900/20 border border-emerald-500/30' : 'bg-rose-900/20 border border-rose-500/30'}`}>
+                          {exercise.isCorrect ? <CheckCircle className="text-emerald-400 shrink-0 w-6 h-6" /> : <XCircle className="text-rose-400 shrink-0 w-6 h-6" />}
                           <div className="flex-1">
-                            <div className="flex items-center justify-between">
-                              <h4 className={`font-bold text-base ${exercise.isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
+                            <div className="flex items-center justify-between flex-wrap gap-2">
+                              <h4 className={`font-bold text-lg ${exercise.isCorrect ? 'text-emerald-400' : 'text-rose-400'}`}>
                                 {exercise.isCorrect ? "Chính xác!" : "Chưa đúng."}
                               </h4>
-                              <span className="text-sm text-slate-300">
-                                Đáp án: <span className="font-bold text-white">{exercise.item.answer}</span>
+                              <span className="text-base text-slate-300">
+                                Đáp án đúng: <span className="font-bold text-white px-2 py-0.5 bg-white/10 rounded mx-1">{exercise.item.answer}</span>
                               </span>
                             </div>
                           </div>
                           <button
                             onClick={handleContinue}
-                            className="px-4 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-white/10 text-white font-semibold text-xs transition"
+                            className="px-6 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm transition shadow-lg shadow-blue-900/20"
                           >
                             Tiếp tục
                           </button>
                         </div>
 
                         {exercise.analysis && (
-                          <div className="space-y-3">
+                          <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-500">
                             {/* Teacher Comment */}
                             {exercise.analysis.comment && (
-                              <div className="bg-indigo-900/30 border border-indigo-500/30 p-4 rounded-xl flex gap-3 items-start">
-                                <span className="text-2xl select-none">👩‍🏫</span>
+                              <div className="bg-indigo-900/20 border border-indigo-500/30 p-5 rounded-2xl flex gap-4 items-start">
+                                <span className="text-3xl select-none">👩‍🏫</span>
                                 <div>
-                                  <h5 className="text-indigo-300 font-bold text-sm mb-1 uppercase">Giáo viên nhận xét</h5>
-                                  <p className="text-slate-200 text-sm leading-relaxed">
+                                  <h5 className="text-indigo-300 font-bold text-sm mb-2 uppercase tracking-wide">Giáo viên nhận xét</h5>
+                                  <p className="text-slate-200 text-base leading-relaxed">
                                     {exercise.analysis.comment}
                                   </p>
                                 </div>
                               </div>
                             )}
 
-                            <div className="grid md:grid-cols-2 gap-3">
-                              <div className="bg-[#0f172a] rounded-lg p-3 border border-blue-500/20">
-                                <h5 className="text-blue-400 font-bold text-xs mb-2 uppercase flex items-center gap-1">📘 Thì (Tense)</h5>
-                                <div className="space-y-1 text-xs md:text-sm">
-                                  <p><span className="text-slate-500">Thì:</span> <span className="text-slate-200 font-medium">{exercise.analysis.tenseName}</span></p>
-                                  <p><span className="text-slate-500">Dấu hiệu:</span> <span className="text-slate-300 italic">"{exercise.analysis.recognitionSigns}"</span></p>
+                            <div className="grid md:grid-cols-2 gap-4">
+                              <div className="bg-[#0f172a] rounded-xl p-4 border border-blue-500/20">
+                                <h5 className="text-blue-400 font-bold text-xs mb-3 uppercase flex items-center gap-2">
+                                  <span className="w-1 h-4 bg-blue-500 rounded-full"></span>
+                                  Thì (Tense)
+                                </h5>
+                                <div className="space-y-2 text-sm">
+                                  <p><span className="text-slate-500 inline-block w-20">Thì:</span> <span className="text-slate-200 font-medium">{exercise.analysis.tenseName}</span></p>
+                                  <p><span className="text-slate-500 inline-block w-20">Dấu hiệu:</span> <span className="text-slate-300 italic">{exercise.analysis.recognitionSigns}</span></p>
                                 </div>
                               </div>
-                              <div className="bg-[#0f172a] rounded-lg p-3 border border-purple-500/20">
-                                <h5 className="text-purple-400 font-bold text-xs mb-2 uppercase flex items-center gap-1">🧠 Ngữ pháp</h5>
-                                <div className="space-y-1 text-xs md:text-sm">
-                                  <p><span className="text-slate-500">Công thức:</span> <code className="bg-slate-800 px-1 py-0.5 rounded text-purple-200">{exercise.analysis.formula}</code></p>
+                              <div className="bg-[#0f172a] rounded-xl p-4 border border-purple-500/20">
+                                <h5 className="text-purple-400 font-bold text-xs mb-3 uppercase flex items-center gap-2">
+                                  <span className="w-1 h-4 bg-purple-500 rounded-full"></span>
+                                  Ngữ pháp
+                                </h5>
+                                <div className="space-y-2 text-sm">
+                                  <p className="flex items-start gap-2">
+                                    <span className="text-slate-500 whitespace-nowrap">Công thức:</span>
+                                    <code className="bg-slate-800 px-2 py-0.5 rounded text-purple-200 font-mono text-xs">{exercise.analysis.formula}</code>
+                                  </p>
                                   {!exercise.isCorrect && exercise.analysis.userError && (
-                                    <p className="text-rose-300 font-medium pt-1">{exercise.analysis.userError}</p>
+                                    <p className="text-rose-300 font-medium pt-1 text-sm bg-rose-900/10 p-2 rounded border border-rose-500/10">
+                                      ⚠️ {exercise.analysis.userError}
+                                    </p>
                                   )}
                                 </div>
                               </div>
@@ -598,9 +592,7 @@ export default function LearnPage() {
             </div>
 
           </div>
-        </div>
-
-        {/* Final Result Modal */}
+        </div>   {/* Final Result Modal */}
         {isLessonComplete && (
           <div className="fixed inset-0 z-50 bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
             <div className="max-w-md w-full bg-[#0f172a] border border-white/20 rounded-3xl p-8 text-center shadow-2xl relative overflow-hidden">

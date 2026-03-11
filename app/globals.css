@@ -1,0 +1,231 @@
+@import "tailwindcss";
+
+/* ===================== THEME TOKENS (Tailwind v4) ===================== */
+@theme {
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+
+  --color-card: var(--card);
+  --color-card-border: var(--card-border);
+
+  /* Background colors for Tailwind v4 */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+}
+
+/* ===================== BASE THEME (LIGHT default) ===================== */
+:root {
+  color-scheme: light;
+  /* Báo cho trình duyệt biết đây là giao diện sáng */
+
+  /* Màu nền Sáng */
+  --bg: #F5F3EE;
+  --fg: #071d33;
+
+  --muted: #5abac9;
+  --accent: #e2e0ef;
+
+  --card: #e8f4fc;
+  --card-border: rgba(59, 130, 246, 0.15);
+}
+
+/* DARK theme => html.dark */
+html.dark {
+  color-scheme: dark;
+  /* Báo cho trình duyệt biết đây là giao diện tối */
+
+  /* Màu nền Tối */
+  --bg: #020617;
+  --fg: #e5e7eb;
+
+  --muted: #92adc9;
+  --accent: #60a5fa;
+
+  --card: rgba(55, 64, 83, 0.7);
+  --card-border: rgba(255, 255, 255, 0.10);
+}
+
+/* ===================== HERO BANNER GRADIENT ===================== */
+/* Light mode: Purple-Pink gradient */
+.hero-banner {
+  background: linear-gradient(to bottom right, #4f46e5, #9333ea, #ec4899) !important;
+}
+
+/* Dark mode: Dark Blue gradient */
+html.dark .hero-banner {
+  background: linear-gradient(to bottom right, rgba(37, 99, 235, 0.2), #0b1220, #020617) !important;
+}
+
+@layer base {
+  :root {
+    /* NỀN SÁNG: Xám xanh dịu (phù hợp light mode) */
+    --background: 210 20% 92%;
+
+    /* Cards xanh nhạt tươi mát */
+    --foreground: 220 25% 20%;
+    --card: 200 60% 95%;
+    --card-foreground: 220 25% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 20%;
+    --primary: 217 91% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 94%;
+    --secondary-foreground: 220 25% 20%;
+    --muted: 210 15% 85%;
+    --muted-foreground: 220 15% 45%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 20% 90%;
+    --input: 210 20% 96%;
+    --ring: 217 91% 55%;
+    --radius: 0.75rem;
+  }
+
+  /* DARK MODE - Dễ nhìn hơn */
+  .dark {
+    /* Nền xám xanh nhạt - dễ nhìn */
+    --background: 220 20% 20%;
+    /* Cards sáng hơn nhiều để nổi bật */
+    --foreground: 0 0% 98%;
+    --card: 220 20% 28%;
+    --card-foreground: 0 0% 98%;
+    --popover: 220 20% 28%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 217 91% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 32%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 220 15% 40%;
+    --muted-foreground: 220 15% 75%;
+    --accent: 199 89% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 35%;
+    --input: 220 20% 25%;
+    --ring: 217 91% 65%;
+  }
+
+}
+
+
+
+
+/* ===================== HELPERS ===================== */
+.text-muted {
+  color: var(--muted);
+}
+
+.text-accent {
+  color: var(--accent);
+}
+
+.glass-card {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  backdrop-filter: blur(16px);
+}
+
+/* ===================== LANDING BACKGROUND ===================== */
+.landing-bg {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -10;
+  overflow: hidden;
+}
+
+/* 1. Mặc định là TỐI (Dark Mode Base) */
+.landing-bg__base {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #0b1220 0%, #020617 55%, #020617 100%);
+}
+
+/* 2. Khi KHÔNG PHẢI Dark Mode -> Đổi sang nền SÁNG */
+html:not(.dark) .landing-bg__base {
+  background: linear-gradient(180deg,
+      #fcfdff 0%,
+      #e1e6ea 34%,
+      #e3e2e6 62%,
+      #e4e0e0 100%);
+}
+
+/* Blobs (Hiệu ứng ánh sáng) */
+.landing-blob {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(140px);
+  opacity: 0.6;
+  mix-blend-mode: screen;
+  /* Quan trọng để blob sáng rực trên nền tối */
+}
+
+/* Điều chỉnh Blob cho chế độ sáng để không bị chói quá */
+html:not(.dark) .landing-blob {
+  mix-blend-mode: multiply;
+  /* Đổi sang multiply cho nền sáng đẹp hơn */
+  opacity: 0.4;
+}
+
+.landing-blob--top {
+  top: -12%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 920px;
+  height: 620px;
+  background: rgba(37, 99, 235, 0.20);
+}
+
+.landing-blob--left {
+  top: 8%;
+  left: 2%;
+  width: 700px;
+  height: 700px;
+  background: rgba(79, 70, 229, 0.12);
+  opacity: 0.45;
+}
+
+.landing-blob--right {
+  bottom: -14%;
+  right: -8%;
+  width: 560px;
+  height: 560px;
+  background: rgba(6, 182, 212, 0.12);
+  opacity: 0.35;
+}
+
+/* Noise Texture */
+.landing-noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.05;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 14px 14px;
+}
+
+/* Tắt noise ở chế độ sáng cho sạch sẽ */
+html:not(.dark) .landing-noise {
+  opacity: 0;
+}
+
+.btn-shine::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -110%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.18), transparent);
+  transform: skewX(-20deg);
+  transition: left 700ms ease-in-out;
+}
+
+.btn-shine:hover::after {
+  left: 110%;
+}

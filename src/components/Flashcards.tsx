@@ -21,6 +21,13 @@ export default function Flashcards({ onScroll }: FlashcardsProps) {
 
   const flashcards: FlashcardData[] = [
     {
+      level: "LƯU",
+      title: "Từ vựng đã lưu",
+      desc: "Ôn tập các từ vựng mới bạn đã lưu trong lúc học.",
+      gradient: "bg-gradient-to-br from-emerald-600 to-[#0f172a]",
+      href: "/flashcards/saved",
+    },
+    {
       level: "A1",
       title: "Thẻ nhớ A1",
       desc: "Từ vựng cơ bản – làm quen với đơn từ.",

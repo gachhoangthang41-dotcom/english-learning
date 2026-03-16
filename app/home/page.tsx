@@ -25,6 +25,8 @@ import {
   Newspaper,
   Mic2,
   Signal,
+  History,
+  Sparkles,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import Flashcards from "@/components/Flashcards";
@@ -279,6 +281,9 @@ export default function HomePage() {
               <NavItem href="#" icon={<Dumbbell className="w-4 h-4" />}>
                 Practice
               </NavItem>
+              <NavItem href="/history" icon={<History className="w-4 h-4" />}>
+                History
+              </NavItem>
               <NavItem href="#" icon={<Users className="w-4 h-4" />}>
                 Friends
               </NavItem>
@@ -386,6 +391,9 @@ export default function HomePage() {
                 </NavItem>
                 <NavItem href="#" icon={<Dumbbell className="w-4 h-4" />}>
                   Practice
+                </NavItem>
+                <NavItem href="/history" icon={<History className="w-4 h-4" />}>
+                  History
                 </NavItem>
                 <NavItem href="#" icon={<Users className="w-4 h-4" />}>
                   Friends
@@ -579,7 +587,7 @@ export default function HomePage() {
                     }
                     bgTone="slate2"
                     icon={<Newspaper className="w-4 h-4" />}
-                    href="/practice/dictation"
+                    href="/learn/a1/1/dictation"
                   />
                 </div>
               </div>

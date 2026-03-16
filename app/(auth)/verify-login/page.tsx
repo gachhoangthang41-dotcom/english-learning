@@ -6,6 +6,7 @@ import Image from "next/image";
 import { HelpCircle } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 type MsgType = "error" | "success" | "info";
 
@@ -17,6 +18,14 @@ function onlyDigits(s: string) {
 }
 
 export default function VerifyLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Đang tải...</div>}>
+      <VerifyLoginContent />
+    </Suspense>
+  );
+}
+
+function VerifyLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 

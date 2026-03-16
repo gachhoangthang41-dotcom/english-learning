@@ -154,7 +154,7 @@ export default function VerifyRegisterPage() {
         showMessage("success", data?.message || "Xác minh thành công! Đang chuyển...");
         try {
           localStorage.removeItem(PENDING_REGISTER_EMAIL_KEY);
-        } catch {}
+        } catch { }
 
         setTimeout(() => router.push("/login"), 800);
         return;
@@ -213,8 +213,8 @@ export default function VerifyRegisterPage() {
     msg?.type === "error"
       ? "text-rose-300"
       : msg?.type === "success"
-      ? "text-emerald-300"
-      : "text-slate-300";
+        ? "text-emerald-300"
+        : "text-slate-300";
 
   return (
     <div className="min-h-screen w-full bg-[#101922] text-white antialiased overflow-x-hidden">

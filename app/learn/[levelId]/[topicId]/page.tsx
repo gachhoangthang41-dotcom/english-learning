@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { ChevronLeft, FileText, Puzzle, Loader2, PlayCircle } from "lucide-react";
+import { ChevronLeft, FileText, Puzzle, Loader2, PlayCircle, Mic } from "lucide-react";
 import { useParams } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -18,9 +18,78 @@ export default function LearnPage() {
   // --- 2. STATES ---
   const [transcript, setTranscript] = useState<string | null>(null);
   const [exercise, setExercise] = useState<string | null>(null);
-  const [loadingAction, setLoadingAction] = useState<"transcript" | "exercise" | null>(null);
+  const [loadingAction, setLoadingAction] = useState<"transcript" | "exercise" | "complete" | null>(null);
+
+  // --- FLASHCARD SAVING STATE ---
+  const [selectedWord, setSelectedWord] = useState<{ word: string; x: number; y: number } | null>(null);
+  const [savingWord, setSavingWord] = useState(false);
+  const [wordSaved, setWordSaved] = useState(false);
 
   // --- 3. ACTIONS ---
+
+  const handleWordSelection = (e: React.MouseEvent<HTMLDivElement>) => {
+    // 1. Check if user selected text
+    const selection = window.getSelection();
+    let text = selection?.toString() || "";
+
+    // 2. If no text is selected, check if user just clicked on a word
+    if (!text && e.target instanceof HTMLElement && e.target.tagName === 'SPAN') {
+        text = e.target.textContent || "";
+    }
+
+    // 3. Clean the text: remove leading/trailing punctuation but keep internal spaces/hyphens
+    const cleaned = text.replace(/^[^a-zA-Z0-9]+|[^a-zA-Z0-9]+$/g, "").trim();
+    if (!cleaned) {
+        if (!selection?.toString()) {
+             // Only clear selected word if they clicked empty space
+            setSelectedWord(null);
+        }
+        return;
+    }
+
+    const container = e.currentTarget;
+    const containerRect = container.getBoundingClientRect();
+
+    let rect = null;
+
+    if (selection && selection.rangeCount > 0 && selection.toString().trim() !== "") {
+        const range = selection.getRangeAt(0);
+        rect = range.getBoundingClientRect();
+    } else if (e.target instanceof HTMLElement && e.target.tagName === 'SPAN') {
+        rect = e.target.getBoundingClientRect();
+    }
+
+    if (!rect || rect.width === 0) return;
+
+    let leftPos = rect.left - containerRect.left;
+    if (leftPos > containerRect.width - 200) {
+      leftPos = containerRect.width - 200;
+    }
+
+    setSelectedWord({
+      word: cleaned,
+      x: leftPos,
+      y: rect.bottom - containerRect.top
+    });
+    setWordSaved(false);
+  };
+
+  const handleSaveWord = async () => {
+    if (!selectedWord) return;
+    setSavingWord(true);
+    try {
+      const res = await fetch("/api/dictionary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ word: selectedWord.word })
+      });
+      if (res.ok) setWordSaved(true);
+    } catch {
+      // alert err
+    } finally {
+      setSavingWord(false);
+    }
+  };
 
   // Hàm giả lập lấy Transcript (chờ 1 giây)
   const handleGetTranscript = () => {
@@ -38,6 +107,37 @@ export default function LearnPage() {
       setExercise(MOCK_EXERCISE);
       setLoadingAction(null);
     }, 1500);
+  };
+
+  // Hàm "Hoàn thành bài học" (Giả lập việc học xong bài tập và lưu lại 15 phút)
+  const [completeMsg, setCompleteMsg] = useState("");
+  const handleCompleteLesson = async () => {
+    setLoadingAction("complete");
+    setCompleteMsg("");
+
+    try {
+      // Gọi API mới tạo để lưu thời gian học. Gửi tạm thời gian là 15 phút.
+      const res = await fetch("/api/learning/progress", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          levelId: params.levelId,
+          topicId: params.topicId,
+          timeSpentMin: 15
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setCompleteMsg("🎉 Đã lưu tiến trình học (15 phút) thành công!");
+      } else {
+        setCompleteMsg(`❌ Lỗi: ${data.message}`);
+      }
+    } catch (e) {
+      setCompleteMsg("❌ Lỗi: Không thể kết nối đến máy chủ.");
+    } finally {
+      setLoadingAction(null);
+    }
   };
 
   return (
@@ -93,8 +193,32 @@ export default function LearnPage() {
             >
               {loadingAction === "transcript" ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
               Lấy Transcript
-
             </button>
+
+            {/* Nút Đi tới Dictation */}
+            <Link
+              href={`/learn/${params.levelId}/${params.topicId}/dictation`}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold transition shadow-lg shadow-purple-500/20"
+            >
+              <Mic size={18} />
+              Luyện Dictation & Shadowing
+            </Link>
+
+            {/* Nút Hoàn thành => Lưu DB */}
+            <button
+              onClick={handleCompleteLesson}
+              disabled={loadingAction === "complete"}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition disabled:opacity-50 shadow-lg shadow-blue-500/20 ml-auto"
+            >
+              {loadingAction === "complete" ? <Loader2 size={18} className="animate-spin" /> : <PlayCircle size={18} />}
+              Lưu & Hoàn thành (15 phút)
+            </button>
+
+            {completeMsg && (
+              <div className="w-full mt-2 text-sm font-semibold text-green-600 dark:text-green-400">
+                {completeMsg}
+              </div>
+            )}
           </div>
         </div>
 
@@ -106,9 +230,50 @@ export default function LearnPage() {
             <h3 className="text-lg font-bold text-foreground mb-4 flex items-center gap-2">
               <FileText size={20} className="text-blue-600 dark:text-blue-400" /> Transcript
             </h3>
-            <div className="flex-1 bg-secondary/50 dark:bg-black/20 rounded-xl p-4 text-foreground leading-relaxed text-sm md:text-base border border-border">
+            <div 
+              className="flex-1 bg-secondary/50 dark:bg-black/20 rounded-xl p-4 text-foreground leading-relaxed text-sm md:text-base border border-border transcript-container relative"
+              onMouseUp={handleWordSelection}
+            >
               {transcript ? (
-                <p>{transcript}</p>
+                <>
+                  <p>
+                    {transcript.split(" ").map((word, i) => (
+                      <span
+                        key={i}
+                        className="cursor-pointer hover:bg-blue-500/20 hover:text-blue-600 dark:text-slate-300 dark:hover:text-blue-400 rounded px-0.5 transition"
+                      >
+                        {word}{" "}
+                      </span>
+                    ))}
+                  </p>
+
+                  {/* Popover cho từ vựng */}
+                  {selectedWord && (
+                    <div
+                      className="absolute z-20 bg-card border border-border shadow-xl rounded-xl p-3 w-48 animate-in fade-in zoom-in-95"
+                      style={{ top: selectedWord.y + 10, left: selectedWord.x }}
+                    >
+                      <div className="flex justify-between items-center mb-3 border-b border-border/50 pb-2">
+                        <span className="font-bold text-lg text-blue-600 dark:text-blue-400">{selectedWord.word}</span>
+                        <button onClick={() => setSelectedWord(null)} className="text-muted-foreground hover:text-foreground transition-colors p-1 rounded-full hover:bg-secondary">✕</button>
+                      </div>
+                      <button
+                        onClick={handleSaveWord}
+                        disabled={savingWord || wordSaved}
+                        className={`w-full py-2.5 rounded-lg text-sm font-bold transition shadow-sm
+                          ${wordSaved ? 'bg-green-600/10 text-green-600 dark:text-green-400 pointer-events-none' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-500/20'}`}
+                      >
+                        {savingWord ? (
+                          <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Đang lưu...</span>
+                        ) : wordSaved ? (
+                          "Đã lưu ✓"
+                        ) : (
+                          "Lưu vào thẻ ghi nhớ"
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </>
               ) : (
                 <p className="text-muted-foreground italic">Chưa có transcript. Hãy bấm nút phía trên.</p>
               )}

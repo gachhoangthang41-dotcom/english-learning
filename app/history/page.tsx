@@ -21,6 +21,10 @@ interface HistoryItem {
             order: number;
             title: string;
             levelId: string;
+            level?: {
+                code: string;
+                name: string;
+            };
         };
     };
 }
@@ -121,9 +125,10 @@ export default function HistoryPage() {
 
                                 // Redo Links
                                 const topicId = item.exercise?.lesson?.order || 1;
-                                const levelId = item.exercise?.lesson?.levelId?.toLowerCase() || 'a1';
-                                const redoLink = `/learn/${levelId}/${topicId}`;
-                                const dictationLink = `/learn/${levelId}/${topicId}/dictation`;
+                                const lvlCode = item.exercise?.lesson?.level?.code || item.exercise?.lesson?.levelId || 'a1';
+                                const levelCode = lvlCode.toLowerCase();
+                                const redoLink = `/learn/${levelCode}/${topicId}`;
+                                const dictationLink = `/learn/${levelCode}/${topicId}/dictation`;
 
                                 return (
                                     <div key={item.id} className={`bg-card border rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-5 transition-all hover:shadow-md ${borderColor}`}>
@@ -140,12 +145,12 @@ export default function HistoryPage() {
                                             </div>
 
                                             <h3 className="text-lg font-bold text-foreground mb-1">
-                                                {item.exercise?.title || "Bài tập"}
+                                                {item.exercise?.title === "Mock Exercise" ? "Bài tập" : (item.exercise?.title || "Bài tập")}
                                             </h3>
 
                                             <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
                                                 <span className="flex items-center gap-1 font-medium">
-                                                    <span className="text-blue-500 font-bold">{item.exercise?.lesson?.levelId}</span>
+                                                    <span className="text-blue-500 font-bold">{item.exercise?.lesson?.level?.code || item.exercise?.lesson?.levelId}</span>
                                                     {" • "}{item.exercise?.lesson?.title}
                                                 </span>
                                                 <span>|</span>

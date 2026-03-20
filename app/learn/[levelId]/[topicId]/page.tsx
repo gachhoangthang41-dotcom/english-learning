@@ -3,11 +3,12 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, FileText, Puzzle, Loader2, PlayCircle, Mic } from "lucide-react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function LearnPage() {
   const params = useParams(); // Lấy ID từ URL
+  const router = useRouter();
 
   // --- 1. CONFIG GIẢ LẬP (MOCK DATA) ---
   // ID video YouTube (Bạn có thể thay đổi tùy bài học sau này)
@@ -147,12 +148,12 @@ export default function LearnPage() {
         {/* --- HEADER --- */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Link
-              href={`/lessons/${params.levelId}`}
+            <button
+              onClick={() => router.back()}
               className="p-2 rounded-full bg-secondary hover:bg-secondary/70 text-muted-foreground hover:text-foreground transition"
             >
               <ChevronLeft size={24} />
-            </Link>
+            </button>
             <div>
               <div className="text-sm font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider">Unit {params.topicId}</div>
               <h1 className="text-xl md:text-2xl font-bold text-foreground">Introducing Myself</h1>

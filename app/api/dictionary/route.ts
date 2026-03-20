@@ -51,12 +51,25 @@ export async function POST(req: NextRequest) {
         let meaning = "Đang cập nhật nghĩa...";
         let pronunciation: string | null = null;
         let partOfSpeech: string | null = null;
+        
+        try {
+            const transRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=vi&dt=t&q=${encodeURIComponent(cleanWord)}`);
+            const transData = await transRes.json();
+            if (transData && transData[0] && transData[0][0]) {
+                meaning = transData[0][0][0];
+            }
+        } catch {
+            // ignore
+        }
+
         try {
             const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${cleanWord}`);
             if (res.ok) {
                 const data = await res.json();
                 const def = data[0]?.meanings[0]?.definitions[0]?.definition;
-                if (def) meaning = def;
+                if (!meaning || meaning === "Đang cập nhật nghĩa..." || meaning === cleanWord) {
+                    if (def) meaning = def;
+                }
                 
                 // Lấy phiên âm
                 const phonetics = data[0]?.phonetics;
@@ -65,10 +78,21 @@ export async function POST(req: NextRequest) {
                     if (validPhonetic) pronunciation = validPhonetic.text;
                 }
                 
-                // Lấy loại từ
+                // Lấy loại từ và dịch sang tiếng Việt
                 const meanings = data[0]?.meanings;
                 if (meanings && meanings.length > 0) {
-                    partOfSpeech = meanings[0]?.partOfSpeech || null;
+                    const enPos = meanings[0]?.partOfSpeech;
+                    const posMap: Record<string, string> = {
+                        "noun": "danh từ",
+                        "verb": "động từ",
+                        "adjective": "tính từ",
+                        "adverb": "trạng từ",
+                        "pronoun": "đại từ",
+                        "preposition": "giới từ",
+                        "conjunction": "liên từ",
+                        "interjection": "thán từ",
+                    };
+                    partOfSpeech = enPos ? (posMap[enPos.toLowerCase()] || enPos) : null;
                 }
             }
         } catch {

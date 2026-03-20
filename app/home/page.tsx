@@ -582,11 +582,11 @@ export default function HomePage() {
                     }
                     metaRight={
                       <span className="inline-flex items-center gap-1">
-                        <Signal className="w-4 h-4" /> C1
+                        <Signal className="w-4 h-4" /> A1 A2
                       </span>
                     }
                     bgTone="slate2"
-                    icon={<Newspaper className="w-4 h-4" />}
+                    icon={<Mic2 className="w-4 h-4" />}
                     href="/learn/a1/1/dictation"
                   />
                 </div>
@@ -787,7 +787,7 @@ function RecommendedCard({
           </span>
 
           <span className="px-2 py-1 rounded bg-purple-600 border border-purple-500 text-xs font-semibold inline-flex items-center gap-1 text-white">
-            {icon} {tag === "Shadowing" ? "Speak" : "Write"}
+            {icon} {tag === "Shadowing" ? "Speak" : "Speak"}
           </span>
         </div>
       </div>

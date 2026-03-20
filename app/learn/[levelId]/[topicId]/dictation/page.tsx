@@ -42,6 +42,7 @@ export default function DictationPage() {
     // API State
     const [videoId, setVideoId] = useState<string>("");
     const [segments, setSegments] = useState<Segment[]>([]);
+    const [levelCode, setLevelCode] = useState<string>(typeof params.levelId === 'string' ? params.levelId.toUpperCase() : "A1");
     const [isLoading, setIsLoading] = useState(true);
 
     const currentSegment = segments[currentSegIndex];
@@ -61,6 +62,7 @@ export default function DictationPage() {
                     const data = await res.json();
                     setVideoId(data.videoId);
                     setSegments(data.segments);
+                    if (data.levelCode) setLevelCode(data.levelCode);
                 } else {
                     console.error("Failed to fetch dictation data:", res.status);
                 }
@@ -223,13 +225,13 @@ export default function DictationPage() {
                     <div className="p-4 flex-1 overflow-y-auto">
                         <div className="mb-6">
                             <div className="text-xs text-blue-400/80 uppercase font-bold tracking-wider mb-2">
-                                All topics / Level {params.levelId} / LESSON {params.topicId}
+                                All topics / Level {levelCode} / LESSON {params.topicId}
                             </div>
                             <div className="flex items-center gap-3">
                                 <div className="text-yellow-400 text-xl">⭐</div>
                                 <h1 className="text-2xl font-bold text-white">Introducing Myself</h1>
                                 <div className="px-2 py-0.5 text-[10px] font-bold uppercase rounded border border-slate-600 text-slate-400">
-                                    Vocab level {params.levelId}
+                                    Vocab level {levelCode}
                                 </div>
                             </div>
                         </div>

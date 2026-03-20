@@ -19,6 +19,35 @@ export default function FlashcardCard({
   partOfSpeech,
 }: FlashcardCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const [displayPronunciation, setDisplayPronunciation] = useState(pronunciation);
+  const [displayPartOfSpeech, setDisplayPartOfSpeech] = useState(partOfSpeech);
+  const [displayMeaning, setDisplayMeaning] = useState(meaning);
+
+  React.useEffect(() => {
+    setDisplayPronunciation(pronunciation);
+    setDisplayPartOfSpeech(partOfSpeech);
+    setDisplayMeaning(meaning);
+
+    const isEnglishMeaning = meaning && /^[a-zA-Z0-9\s,\.\-'"!]+$/.test(meaning);
+    if (!pronunciation || !partOfSpeech || isEnglishMeaning) {
+      fetch(`/api/dictionary/autofill?word=${word}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.status === "success" && data.data) {
+            if (!pronunciation && data.data.pronunciation) {
+              setDisplayPronunciation(data.data.pronunciation);
+            }
+            if (!partOfSpeech && data.data.partOfSpeech) {
+              setDisplayPartOfSpeech(data.data.partOfSpeech);
+            }
+            if (isEnglishMeaning && data.data.meaning) {
+              setDisplayMeaning(data.data.meaning);
+            }
+          }
+        })
+        .catch(console.error);
+    }
+  }, [word, pronunciation, partOfSpeech, meaning]);
 
   const renderExample = () => {
     if (!example) return null;
@@ -77,17 +106,9 @@ export default function FlashcardCard({
             <Volume2 className="w-8 h-8 ml-[-2px]" />
           </button>
 
-          <h2 className="text-[2.75rem] font-bold text-black mb-3 break-words">
+          <h2 className="text-[2.75rem] font-bold text-black break-words">
             {word}
           </h2>
-
-          {partOfSpeech && (
-            <p className="text-2xl text-black mb-2">{partOfSpeech}</p>
-          )}
-
-          {pronunciation && (
-            <p className="text-2xl text-black">/{pronunciation}/</p>
-          )}
         </div>
 
         {/* Back side - Meaning */}
@@ -101,8 +122,18 @@ export default function FlashcardCard({
           }}
         >
           <div className="text-center w-full">
+            {displayPartOfSpeech && (
+              <p className="text-xl font-semibold text-blue-600 mb-1">{displayPartOfSpeech}</p>
+            )}
+            
+            {displayPronunciation && (
+              <p className="text-xl text-gray-500 mb-4">
+                {displayPronunciation.startsWith('/') ? displayPronunciation : `/${displayPronunciation}/`}
+              </p>
+            )}
+
             <h2 className="text-3xl font-bold text-black mb-4 break-words leading-snug">
-              {meaning}
+              {displayMeaning}
             </h2>
             {renderExample()}
           </div>

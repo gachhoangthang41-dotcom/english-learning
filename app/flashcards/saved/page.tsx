@@ -24,6 +24,7 @@ export default function SavedFlashcardsPage() {
     const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({ meaning: "", pronunciation: "", partOfSpeech: "" });
     const [isSaving, setIsSaving] = useState(false);
+    const [isAutofilling, setIsAutofilling] = useState(false);
 
     useEffect(() => {
         fetch("/api/dictionary")
@@ -57,14 +58,39 @@ export default function SavedFlashcardsPage() {
         }
     };
 
-    const handleEditClick = () => {
+    const handleEditClick = async () => {
         const current = flashcards[currentIndex];
+        
         setEditForm({
             meaning: current.meaning || "",
             pronunciation: current.pronunciation || "",
             partOfSpeech: current.partOfSpeech || ""
         });
         setIsEditing(true);
+
+        const isEnglishMeaning = current.meaning && /^[a-zA-Z0-9\s,\.\-'"!]+$/.test(current.meaning);
+        const needsAutofill = !current.pronunciation || !current.partOfSpeech || !current.meaning || isEnglishMeaning;
+
+        if (needsAutofill) {
+            setIsAutofilling(true);
+            try {
+                const res = await fetch(`/api/dictionary/autofill?word=${current.word}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === "success" && data.data) {
+                        setEditForm(prev => ({
+                            meaning: (prev.meaning && !isEnglishMeaning) ? prev.meaning : (data.data.meaning || prev.meaning),
+                            pronunciation: prev.pronunciation || data.data.pronunciation || prev.pronunciation,
+                            partOfSpeech: prev.partOfSpeech || data.data.partOfSpeech || prev.partOfSpeech
+                        }));
+                    }
+                }
+            } catch (error) {
+                console.error("Autofill error:", error);
+            } finally {
+                setIsAutofilling(false);
+            }
+        }
     };
 
     const handleSaveEdit = async () => {
@@ -219,7 +245,10 @@ export default function SavedFlashcardsPage() {
                 <div className="fixed inset-0 z-[100] bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
                     <div className="bg-card w-full max-w-md rounded-2xl p-6 shadow-2xl border border-border">
                         <div className="flex items-center justify-between mb-6">
-                            <h3 className="text-xl font-bold text-foreground">Chỉnh sửa từ: <span className="text-blue-500">{flashcards[currentIndex].word}</span></h3>
+                            <h3 className="text-xl font-bold text-foreground">
+                                Chỉnh sửa từ: <span className="text-blue-500">{flashcards[currentIndex].word}</span>
+                                {isAutofilling && <Loader2 className="inline-block w-4 h-4 ml-2 animate-spin text-muted-foreground" />}
+                            </h3>
                             <button onClick={() => setIsEditing(false)} className="text-muted-foreground hover:text-foreground">
                                 <X className="w-6 h-6" />
                             </button>

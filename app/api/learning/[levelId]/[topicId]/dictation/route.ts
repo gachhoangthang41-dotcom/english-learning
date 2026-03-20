@@ -49,15 +49,19 @@ export async function GET(
     try {
         const { levelId, topicId } = await context.params;
 
+        const upperLevelId = levelId.toUpperCase();
+        const isCode = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'].includes(upperLevelId);
+
         // 1. Locate Level
-        const level = await prisma.level.findUnique({
-            where: { code: levelId.toUpperCase() as any }
+        const level = await prisma.level.findFirst({
+            where: isCode ? { code: upperLevelId as any } : { id: levelId }
         });
 
         if (!level) {
             return NextResponse.json({
                  videoId: MOCK_VIDEO_ID,
                  segments: MOCK_SEGMENTS,
+                 levelCode: isCode ? upperLevelId : "A1",
                  message: "Level not found, using fallback data"
             }, { status: 200 });
         }
@@ -71,6 +75,7 @@ export async function GET(
            return NextResponse.json({
                 videoId: MOCK_VIDEO_ID,
                 segments: MOCK_SEGMENTS,
+                levelCode: level.code,
                 message: "Lesson not found, using fallback data"
            }, { status: 200 });
        }
@@ -84,6 +89,7 @@ export async function GET(
            return NextResponse.json({
                 videoId: exercise?.mediaUrl || MOCK_VIDEO_ID,
                 segments: MOCK_SEGMENTS,
+                levelCode: level.code,
                 message: "Exercise or specific segments not found, using fallback data"
            }, { status: 200 });
        }
@@ -94,6 +100,7 @@ export async function GET(
        return NextResponse.json({
            videoId: exercise.mediaUrl || MOCK_VIDEO_ID,
            segments: Array.isArray(dbSegments) && dbSegments.length > 0 ? dbSegments : MOCK_SEGMENTS,
+           levelCode: level.code,
            message: "Success"
        }, { status: 200 });
 

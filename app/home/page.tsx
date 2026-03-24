@@ -693,7 +693,7 @@ function NavItem({
     <Link
       href={href}
       className={cx(
-        "px-3 py-2 rounded-xl border text-sm inline-flex items-center gap-2 transition",
+        "px-3 py-2 rounded-xl border text-sm inline-flex items-center gap-2 transition whitespace-nowrap",
         active
           ? "bg-secondary border-border font-semibold text-foreground"
           : "text-muted-foreground hover:bg-secondary hover:text-foreground border-transparent font-medium"

@@ -47,17 +47,18 @@ export async function POST(request: NextRequest) {
         }
 
         // 1. Verify Level (if not exists, we create a mock one)
+        const upperLevelId = levelId.toUpperCase().trim().replace('-', '_');
         let level = await prisma.level.findUnique({
-            where: { code: levelId.toUpperCase() as any }
+            where: { code: upperLevelId as any }
         });
 
         if (!level) {
             level = await prisma.level.create({
                 data: {
-                    code: levelId.toUpperCase() as any,
-                    name: `Level ${levelId.toUpperCase()}`,
-                    order: levelId === 'A1' ? 1 : levelId === 'A2' ? 2 : levelId === 'B1' ? 3 : 4,
-                    description: `Automatically created level for ${levelId}`,
+                    code: upperLevelId as any,
+                    name: `Level ${upperLevelId.replace('_', '-')}`,
+                    order: upperLevelId === 'PRE_A1' ? 0 : upperLevelId === 'A1' ? 1 : upperLevelId === 'A2' ? 2 : upperLevelId === 'B1' ? 3 : upperLevelId === 'B2' ? 4 : upperLevelId === 'C1' ? 5 : 6,
+                    description: `Automatically created level for ${upperLevelId.replace('_', '-')}`,
                     recommendedMinPerLesson: 15
                 }
             });
@@ -145,12 +146,12 @@ export async function POST(request: NextRequest) {
             },
             { status: 200 }
         );
-    } catch (error) {
+    } catch (error: any) {
         console.error("[API /learning/progress] Error:", error);
         return NextResponse.json(
             {
                 status: "error",
-                message: "Internal server error"
+                message: error.message || "Internal server error"
             },
             { status: 500 }
         );

@@ -26,6 +26,23 @@ export default function LearnPage() {
   const [savingWord, setSavingWord] = useState(false);
   const [wordSaved, setWordSaved] = useState(false);
 
+  // --- TIMER STATE ---
+  const [studyTimeSeconds, setStudyTimeSeconds] = useState(0);
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setStudyTimeSeconds(prev => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatTime = (totalSeconds: number) => {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    if (m === 0) return `${s} giây`;
+    return `${m} phút ${s} giây`;
+  };
+
   // --- 3. ACTIONS ---
 
   const handleWordSelection = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -110,27 +127,29 @@ export default function LearnPage() {
     }, 1500);
   };
 
-  // Hàm "Hoàn thành bài học" (Giả lập việc học xong bài tập và lưu lại 15 phút)
+  // Hàm "Hoàn thành bài học" (Lưu lại thời gian học thực tế)
   const [completeMsg, setCompleteMsg] = useState("");
   const handleCompleteLesson = async () => {
     setLoadingAction("complete");
     setCompleteMsg("");
 
+    const timeSpentMin = Math.max(1, Math.round(studyTimeSeconds / 60));
+
     try {
-      // Gọi API mới tạo để lưu thời gian học. Gửi tạm thời gian là 15 phút.
+      // Gọi API để lưu thời gian học thực tế
       const res = await fetch("/api/learning/progress", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           levelId: params.levelId,
           topicId: params.topicId,
-          timeSpentMin: 15
+          timeSpentMin: timeSpentMin
         })
       });
 
       const data = await res.json();
       if (res.ok) {
-        setCompleteMsg("🎉 Đã lưu tiến trình học (15 phút) thành công!");
+        setCompleteMsg(`🎉 Đã lưu tiến trình học (${timeSpentMin} phút) thành công!`);
       } else {
         setCompleteMsg(`❌ Lỗi: ${data.message}`);
       }
@@ -190,7 +209,7 @@ export default function LearnPage() {
             <button
               onClick={handleGetTranscript}
               disabled={loadingAction === "transcript"}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-secondary dark:bg-slate-800 hover:bg-secondary/70 dark:hover:bg-slate-700 text-foreground font-semibold border border-border transition disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-secondary dark:bg-slate-800 hover:bg-secondary/70 dark:hover:bg-slate-700 text-slate-900 dark:text-slate-100 font-semibold border border-border transition disabled:opacity-50"
             >
               {loadingAction === "transcript" ? <Loader2 size={18} className="animate-spin" /> : <FileText size={18} />}
               Lấy Transcript
@@ -212,7 +231,7 @@ export default function LearnPage() {
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition disabled:opacity-50 shadow-lg shadow-blue-500/20 ml-auto"
             >
               {loadingAction === "complete" ? <Loader2 size={18} className="animate-spin" /> : <PlayCircle size={18} />}
-              Lưu & Hoàn thành (15 phút)
+              Lưu & Hoàn thành
             </button>
 
             {completeMsg && (

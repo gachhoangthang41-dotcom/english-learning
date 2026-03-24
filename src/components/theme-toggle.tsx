@@ -18,7 +18,7 @@ export function ThemeToggle() {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="hidden sm:inline text-sm font-semibold text-muted">chế độ:</span>
+      <span className="hidden sm:inline text-sm font-semibold text-slate-600 dark:text-slate-400">chế độ:</span>
 
       <button
         type="button"
@@ -42,7 +42,7 @@ export function ThemeToggle() {
         />
       </button>
 
-      <span className="text-sm font-semibold text-muted">
+      <span className="text-sm font-semibold text-slate-600 dark:text-slate-400">
         {isDark ? "Tối" : "Sáng"}
       </span>
     </div>

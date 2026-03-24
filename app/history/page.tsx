@@ -62,7 +62,7 @@ export default function HistoryPage() {
                 <div className="mx-auto max-w-4xl px-5 lg:px-8 h-16 flex items-center justify-between">
                     <button
                         onClick={() => router.back()}
-                        className="flex items-center gap-2 text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition"
+                        className="flex items-center gap-2 text-foreground hover:text-blue-600 dark:hover:text-blue-400 transition whitespace-nowrap flex-shrink-0"
                     >
                         <ChevronLeft className="w-5 h-5" />
                         <span className="font-semibold hidden sm:inline">Trở Về Dashboard</span>

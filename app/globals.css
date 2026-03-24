@@ -1,19 +1,41 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ===================== THEME TOKENS (Tailwind v4) ===================== */
 @theme {
   --color-bg: var(--bg);
   --color-fg: var(--fg);
 
-  --color-muted: var(--muted);
-  --color-accent: var(--accent);
+  --color-custom-muted: var(--custom-muted);
+  --color-custom-accent: var(--custom-accent);
 
-  --color-card: var(--card);
+  --color-custom-card: var(--custom-card);
   --color-card-border: var(--card-border);
 
-  /* Background colors for Tailwind v4 */
+  /* Shadcn/UI Background colors for Tailwind v4 */
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 /* ===================== BASE THEME (LIGHT default) ===================== */
@@ -25,10 +47,10 @@
   --bg: #F5F3EE;
   --fg: #071d33;
 
-  --muted: #5abac9;
-  --accent: #e2e0ef;
+  --custom-muted: #5abac9;
+  --custom-accent: #e2e0ef;
 
-  --card: #e8f4fc;
+  --custom-card: #e8f4fc;
   --card-border: rgba(59, 130, 246, 0.15);
 }
 
@@ -41,10 +63,10 @@ html.dark {
   --bg: #020617;
   --fg: #e5e7eb;
 
-  --muted: #92adc9;
-  --accent: #60a5fa;
+  --custom-muted: #92adc9;
+  --custom-accent: #60a5fa;
 
-  --card: rgba(55, 64, 83, 0.7);
+  --custom-card: rgba(55, 64, 83, 0.7);
   --card-border: rgba(255, 255, 255, 0.10);
 }
 
@@ -118,15 +140,15 @@ html.dark .hero-banner {
 
 /* ===================== HELPERS ===================== */
 .text-muted {
-  color: var(--muted);
+  color: var(--custom-muted);
 }
 
 .text-accent {
-  color: var(--accent);
+  color: var(--custom-accent);
 }
 
 .glass-card {
-  background: var(--card);
+  background: var(--custom-card);
   border: 1px solid var(--card-border);
   backdrop-filter: blur(16px);
 }
@@ -140,20 +162,16 @@ html.dark .hero-banner {
   overflow: hidden;
 }
 
-/* 1. Mặc định là TỐI (Dark Mode Base) */
+/* 1. LIGHT MODE Base (default) */
 .landing-bg__base {
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, #0b1220 0%, #020617 55%, #020617 100%);
+  background: linear-gradient(180deg, #dbeafe 0%, #f0f9ff 50%, #f5f3ee 100%);
 }
 
-/* 2. Khi KHÔNG PHẢI Dark Mode -> Đổi sang nền SÁNG */
-html:not(.dark) .landing-bg__base {
-  background: linear-gradient(180deg,
-      #fcfdff 0%,
-      #e1e6ea 34%,
-      #e3e2e6 62%,
-      #e4e0e0 100%);
+/* 2. DARK MODE Base */
+html.dark .landing-bg__base {
+  background: linear-gradient(180deg, #0b1220 0%, #020617 55%, #020617 100%);
 }
 
 /* Blobs (Hiệu ứng ánh sáng) */
@@ -161,16 +179,14 @@ html:not(.dark) .landing-bg__base {
   position: absolute;
   border-radius: 9999px;
   filter: blur(140px);
-  opacity: 0.6;
-  mix-blend-mode: screen;
-  /* Quan trọng để blob sáng rực trên nền tối */
+  opacity: 0.4;
+  mix-blend-mode: multiply;
 }
 
-/* Điều chỉnh Blob cho chế độ sáng để không bị chói quá */
-html:not(.dark) .landing-blob {
-  mix-blend-mode: multiply;
-  /* Đổi sang multiply cho nền sáng đẹp hơn */
-  opacity: 0.4;
+/* In dark mode use screen blend */
+html.dark .landing-blob {
+  opacity: 0.6;
+  mix-blend-mode: screen;
 }
 
 .landing-blob--top {
@@ -188,6 +204,10 @@ html:not(.dark) .landing-blob {
   width: 700px;
   height: 700px;
   background: rgba(79, 70, 229, 0.12);
+  opacity: 0.3;
+}
+
+html.dark .landing-blob--left {
   opacity: 0.45;
 }
 
@@ -197,6 +217,10 @@ html:not(.dark) .landing-blob {
   width: 560px;
   height: 560px;
   background: rgba(6, 182, 212, 0.12);
+  opacity: 0.2;
+}
+
+html.dark .landing-blob--right {
   opacity: 0.35;
 }
 
@@ -204,14 +228,14 @@ html:not(.dark) .landing-blob {
 .landing-noise {
   position: absolute;
   inset: 0;
-  opacity: 0.05;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  opacity: 0.03;
+  background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px);
   background-size: 14px 14px;
 }
 
-/* Tắt noise ở chế độ sáng cho sạch sẽ */
-html:not(.dark) .landing-noise {
-  opacity: 0;
+html.dark .landing-noise {
+  opacity: 0.05;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
 }
 
 .btn-shine::after {

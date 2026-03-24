@@ -16,6 +16,8 @@ import {
   Mail,
   Camera,
   Loader2,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
@@ -42,6 +44,10 @@ export default function SecurityPage() {
 
   const [msg, setMsg] = React.useState<{ type: MsgType; text: string } | null>(
     null
+  );
+
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(
+    pathname.startsWith("/profile/settings") || pathname.startsWith("/profile/security")
   );
 
   // forms
@@ -294,7 +300,7 @@ export default function SecurityPage() {
       {/* Header */}
       <header className="site-header w-full border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <Link href="/home" className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full grid place-items-center border border-white/10 bg-white/5 overflow-hidden">
+          <span className="w-8 h-8 rounded-full grid place-items-center border border-slate-300 dark:border-white/10 bg-slate-100 dark:bg-white/5 overflow-hidden">
             <Image
               src="/assets/icons/chick.png"
               alt="Logo"
@@ -304,8 +310,8 @@ export default function SecurityPage() {
               priority
             />
           </span>
-          <h2 className="text-lg font-bold leading-tight tracking-tight">
-            Shadowing <span className="text-blue-400">&amp;</span> Dictation
+          <h2 className="text-lg font-bold leading-tight tracking-tight !text-black dark:!text-white">
+            Shadowing <span className="text-blue-600 dark:text-blue-400">&amp;</span> Dictation
           </h2>
         </Link>
 
@@ -313,7 +319,7 @@ export default function SecurityPage() {
           <ThemeToggle />
           <Link
             href="/home"
-            className="text-sm font-bold px-4 py-2 rounded-full text-blue-400 hover:bg-blue-500/10 border border-transparent hover:border-blue-400/25 transition"
+            className="text-sm font-bold px-4 py-2 rounded-full text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 border border-transparent hover:border-blue-400/25 transition"
           >
             Home
           </Link>
@@ -325,7 +331,7 @@ export default function SecurityPage() {
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
             {/* Sidebar */}
             <aside className="lg:col-span-4">
-              <div className="glass-card rounded-2xl border border-white/10 p-5">
+              <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#374053]/80 backdrop-blur-xl p-5">
                 <div className="flex items-center gap-3">
                   {/* Avatar */}
                   <div className="relative size-12 rounded-full bg-white/10 ring-1 ring-white/10 overflow-hidden">
@@ -340,7 +346,7 @@ export default function SecurityPage() {
                       />
                     ) : (
                       <div className="w-full h-full grid place-items-center">
-                        <User className="w-6 h-6 text-white/80" />
+                        <User className="w-6 h-6 text-slate-400 dark:text-white/80" />
                       </div>
                     )}
 
@@ -348,7 +354,7 @@ export default function SecurityPage() {
                       type="button"
                       onClick={onPickAvatarClick}
                       disabled={uploadingAvatar || loading}
-                      className="absolute -bottom-1 -right-1 size-7 rounded-full bg-blue-600 hover:bg-blue-500 border border-white/10 grid place-items-center shadow-lg shadow-blue-500/25 disabled:opacity-60"
+                      className="absolute -bottom-1 -right-1 size-7 rounded-full bg-blue-600 hover:bg-blue-500 border border-white/10 grid place-items-center shadow-lg shadow-blue-500/25 disabled:opacity-60 text-white"
                       title="Đổi avatar"
                     >
                       {uploadingAvatar ? (
@@ -368,20 +374,14 @@ export default function SecurityPage() {
                   </div>
 
                   <div className="leading-tight">
-                    <div className="font-extrabold">{shownName}</div>
-                    <div className="text-sm text-slate-400">
+                    <div className="font-extrabold text-slate-800 dark:text-white">{shownName}</div>
+                    <div className="text-sm text-slate-500 dark:text-slate-400">
                       {user?.role || "Member"}
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-5 space-y-2">
-                  <MenuItem
-                    icon={<Settings className="w-5 h-5" />}
-                    label="Chung"
-                    active={false}
-                    onClick={() => showMessage("info", "Mục này làm sau nhé.")}
-                  />
                   <MenuItem
                     icon={<User className="w-5 h-5" />}
                     label="Tài khoản"
@@ -394,24 +394,53 @@ export default function SecurityPage() {
                     active={false}
                     onClick={() => showMessage("info", "Mục này làm sau nhé.")}
                   />
-                  <MenuItem
-                    icon={<Volume2 className="w-5 h-5" />}
-                    label="Âm thanh"
-                    active={false}
-                    onClick={() => showMessage("info", "Mục này làm sau nhé.")}
-                  />
-                  <MenuItem
-                    icon={<Bell className="w-5 h-5" />}
-                    label="Thông báo"
-                    active={false}
-                    onClick={() => showMessage("info", "Mục này làm sau nhé.")}
-                  />
-                  <MenuItem
-                    icon={<Shield className="w-5 h-5" />}
-                    label="Bảo mật"
-                    active={pathname === "/profile/security"}
-                    onClick={() => go("/profile/security")}
-                  />
+
+                  {/* Settings group */}
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                      className={[
+                        "w-full flex items-center justify-between px-4 py-3 rounded-xl border transition text-left",
+                        isSettingsOpen
+                          ? "bg-blue-50/80 dark:bg-white/10 border-blue-200 dark:border-white/20 text-blue-700 dark:text-white"
+                          : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10",
+                      ].join(" ")}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className={isSettingsOpen ? "text-blue-600 dark:text-white" : "text-slate-500 dark:text-slate-300"}>
+                          <Settings className="w-5 h-5" />
+                        </span>
+                        <span className="font-semibold">Cài đặt</span>
+                      </div>
+                      <span className="text-slate-400">
+                        {isSettingsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                      </span>
+                    </button>
+                    
+                    {isSettingsOpen && (
+                      <div className="mt-2 ml-4 pl-4 border-l-2 border-white/10 space-y-2">
+                        <MenuItem
+                          icon={<Volume2 className="w-5 h-5" />}
+                          label="Âm thanh"
+                          active={false}
+                          onClick={() => showMessage("info", "Mục này làm sau nhé.")}
+                        />
+                        <MenuItem
+                          icon={<Bell className="w-5 h-5" />}
+                          label="Thông báo"
+                          active={false}
+                          onClick={() => showMessage("info", "Mục này làm sau nhé.")}
+                        />
+                        <MenuItem
+                          icon={<Shield className="w-5 h-5" />}
+                          label="Bảo mật"
+                          active={pathname === "/profile/security"}
+                          onClick={() => go("/profile/security")}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <p className="mt-4 text-xs text-slate-400"></p>
@@ -420,13 +449,13 @@ export default function SecurityPage() {
 
             {/* Content */}
             <section className="lg:col-span-8">
-              <div className="glass-card rounded-2xl border border-white/10 p-6">
+              <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-white/80 dark:bg-[#374053]/80 backdrop-blur-xl p-6">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h1 className="text-2xl font-extrabold tracking-tight">
+                    <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
                       Bảo mật
                     </h1>
-                    <p className="text-muted mt-1">
+                    <p className="text-slate-400 mt-1">
                       Đổi tên hiển thị, email và mật khẩu.
                     </p>
                   </div>
@@ -444,11 +473,11 @@ export default function SecurityPage() {
                 {/* ✅ 3 khối chuyển qua đây */}
                 <div className="mt-8 grid grid-cols-1 gap-6">
                   {/* Update display name */}
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                    <h2 className="font-extrabold text-lg">
+                  <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-5">
+                    <h2 className="font-extrabold text-lg text-slate-800 dark:text-white">
                       Đổi tên hiển thị (biệt danh)
                     </h2>
-                    <p className="text-muted text-sm mt-1">
+                    <p className="text-slate-400 text-sm mt-1">
                       Đổi biệt danh của bạn.
                     </p>
 
@@ -456,7 +485,7 @@ export default function SecurityPage() {
                       <input
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
-                        className="flex-1 h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500
+                        className="flex-1 h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                         placeholder="Nhập tên hiển thị..."
                       />
@@ -474,9 +503,9 @@ export default function SecurityPage() {
                   </div>
 
                   {/* Update email */}
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                    <h2 className="font-extrabold text-lg">Đổi Gmail</h2>
-                    <p className="text-muted text-sm mt-1">
+                  <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-5">
+                    <h2 className="font-extrabold text-lg text-slate-800 dark:text-white">Đổi Gmail</h2>
+                    <p className="text-slate-400 text-sm mt-1">
                       Để an toàn, cần nhập mật khẩu hiện tại.
                     </p>
 
@@ -484,7 +513,7 @@ export default function SecurityPage() {
                       <input
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500
+                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                         placeholder="email@domain.com"
                       />
@@ -492,7 +521,7 @@ export default function SecurityPage() {
                         value={emailPw}
                         onChange={(e) => setEmailPw(e.target.value)}
                         type="password"
-                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500
+                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                         placeholder="Mật khẩu hiện tại"
                       />
@@ -513,9 +542,9 @@ export default function SecurityPage() {
                   </div>
 
                   {/* Change password */}
-                  <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
-                    <h2 className="font-extrabold text-lg">Đổi mật khẩu</h2>
-                    <p className="text-muted text-sm mt-1">
+                  <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-5">
+                    <h2 className="font-extrabold text-lg text-slate-800 dark:text-white">Đổi mật khẩu</h2>
+                    <p className="text-slate-400 text-sm mt-1">
                       Không thể xem mật khẩu cũ (chỉ đổi).
                     </p>
 
@@ -524,7 +553,7 @@ export default function SecurityPage() {
                         value={currentPw}
                         onChange={(e) => setCurrentPw(e.target.value)}
                         type="password"
-                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500
+                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                         placeholder="Mật khẩu hiện tại"
                       />
@@ -532,7 +561,7 @@ export default function SecurityPage() {
                         value={newPw}
                         onChange={(e) => setNewPw(e.target.value)}
                         type="password"
-                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500
+                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                         placeholder="Mật khẩu mới (>= 8 ký tự)"
                       />
@@ -540,7 +569,7 @@ export default function SecurityPage() {
                         value={confirmPw}
                         onChange={(e) => setConfirmPw(e.target.value)}
                         type="password"
-                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-500
+                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40 sm:col-span-2"
                         placeholder="Nhập lại mật khẩu mới"
                       />
@@ -591,11 +620,11 @@ function MenuItem({
       className={[
         "w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition text-left",
         active
-          ? "bg-blue-500/10 border-blue-400/20 text-blue-300"
-          : "bg-white/5 border-white/10 text-slate-200 hover:bg-white/10",
+          ? "bg-blue-500/10 border-blue-400/20 text-blue-600 dark:text-blue-400"
+          : "bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10",
       ].join(" ")}
     >
-      <span className={active ? "text-blue-300" : "text-slate-300"}>
+      <span className={active ? "text-blue-600 dark:text-blue-400" : "text-slate-500 dark:text-slate-300"}>
         {icon}
       </span>
       <span className="font-semibold">{label}</span>

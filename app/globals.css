@@ -1,68 +1,159 @@
 @import "tailwindcss";
-html { background: #07101f; }
-html.light { background: #f6f7f8; }
+@custom-variant dark (&:where(.dark, .dark *));
 
 /* ===================== THEME TOKENS (Tailwind v4) ===================== */
 @theme {
   --color-bg: var(--bg);
   --color-fg: var(--fg);
 
-  --color-muted: var(--muted);
-  --color-accent: var(--accent);
+  --color-custom-muted: var(--custom-muted);
+  --color-custom-accent: var(--custom-accent);
 
-  --color-card: var(--card);
+  --color-custom-card: var(--custom-card);
   --color-card-border: var(--card-border);
+
+  /* Shadcn/UI Background colors for Tailwind v4 */
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 /* ===================== BASE THEME (LIGHT default) ===================== */
 :root {
   color-scheme: light;
+  /* Báo cho trình duyệt biết đây là giao diện sáng */
 
-  --bg: #f6fbff;
-  --fg: #0a2540;
+  /* Màu nền Sáng */
+  --bg: #F5F3EE;
+  --fg: #071d33;
 
-  --muted: #425466;
-  --accent: #137fec;
+  --custom-muted: #5abac9;
+  --custom-accent: #e2e0ef;
 
-  --card: rgba(255,255,255,.92);
-  --card-border: rgba(10,37,64,.12);
+  --custom-card: #e8f4fc;
+  --card-border: rgba(59, 130, 246, 0.15);
 }
 
 /* DARK theme => html.dark */
 html.dark {
   color-scheme: dark;
+  /* Báo cho trình duyệt biết đây là giao diện tối */
 
+  /* Màu nền Tối */
   --bg: #020617;
   --fg: #e5e7eb;
 
-  --muted: #92adc9;
-  --accent: #60a5fa;
+  --custom-muted: #92adc9;
+  --custom-accent: #60a5fa;
 
-  --card: rgba(15, 23, 42, .70);
-  --card-border: rgba(255,255,255,.10);
+  --custom-card: rgba(55, 64, 83, 0.7);
+  --card-border: rgba(255, 255, 255, 0.10);
+}
+
+/* ===================== HERO BANNER GRADIENT ===================== */
+/* Light mode: Purple-Pink gradient */
+.hero-banner {
+  background: linear-gradient(to bottom right, #4f46e5, #9333ea, #ec4899) !important;
+}
+
+/* Dark mode: Dark Blue gradient */
+html.dark .hero-banner {
+  background: linear-gradient(to bottom right, rgba(37, 99, 235, 0.2), #0b1220, #020617) !important;
 }
 
 @layer base {
-  body {
-    background: var(--bg);
-    color: var(--fg);
-    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial,
-      "Noto Sans", "Liberation Sans", sans-serif;
+  :root {
+    /* NỀN SÁNG: Xám xanh dịu (phù hợp light mode) */
+    --background: 210 20% 92%;
+
+    /* Cards xanh nhạt tươi mát */
+    --foreground: 220 25% 20%;
+    --card: 200 60% 95%;
+    --card-foreground: 220 25% 20%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 20%;
+    --primary: 217 91% 55%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 210 20% 94%;
+    --secondary-foreground: 220 25% 20%;
+    --muted: 210 15% 85%;
+    --muted-foreground: 220 15% 45%;
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 210 20% 90%;
+    --input: 210 20% 96%;
+    --ring: 217 91% 55%;
+    --radius: 0.75rem;
   }
+
+  /* DARK MODE - Dễ nhìn hơn */
+  .dark {
+    /* Nền xám xanh nhạt - dễ nhìn */
+    --background: 220 20% 20%;
+    /* Cards sáng hơn nhiều để nổi bật */
+    --foreground: 0 0% 98%;
+    --card: 220 20% 28%;
+    --card-foreground: 0 0% 98%;
+    --popover: 220 20% 28%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 217 91% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 15% 32%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 220 15% 40%;
+    --muted-foreground: 220 15% 75%;
+    --accent: 199 89% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 70% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 15% 35%;
+    --input: 220 20% 25%;
+    --ring: 217 91% 65%;
+  }
+
 }
 
-/* ===================== HELPERS giống bản cũ ===================== */
-.text-muted { color: var(--muted); }
-.text-accent { color: var(--accent); }
 
-/* card glass giống bản cũ */
+
+
+/* ===================== HELPERS ===================== */
+.text-muted {
+  color: var(--custom-muted);
+}
+
+.text-accent {
+  color: var(--custom-accent);
+}
+
 .glass-card {
-  background: var(--card);
+  background: var(--custom-card);
   border: 1px solid var(--card-border);
   backdrop-filter: blur(16px);
 }
 
-/* ===================== LANDING BACKGROUND giống bản cũ ===================== */
+/* ===================== LANDING BACKGROUND ===================== */
 .landing-bg {
   position: fixed;
   inset: 0;
@@ -71,28 +162,29 @@ html.dark {
   overflow: hidden;
 }
 
+/* 1. LIGHT MODE Base (default) */
 .landing-bg__base {
   position: absolute;
   inset: 0;
+  background: linear-gradient(180deg, #dbeafe 0%, #f0f9ff 50%, #f5f3ee 100%);
+}
+
+/* 2. DARK MODE Base */
+html.dark .landing-bg__base {
   background: linear-gradient(180deg, #0b1220 0%, #020617 55%, #020617 100%);
 }
 
-/* Light: Stripe-ish */
-html:not(.dark) .landing-bg__base {
-  background: linear-gradient(
-    180deg,
-    #f6fbff 0%,
-    #eef5ff 34%,
-    #f7f1ff 62%,
-    #ffffff 100%
-  );
-}
-
-/* blobs */
+/* Blobs (Hiệu ứng ánh sáng) */
 .landing-blob {
   position: absolute;
   border-radius: 9999px;
   filter: blur(140px);
+  opacity: 0.4;
+  mix-blend-mode: multiply;
+}
+
+/* In dark mode use screen blend */
+html.dark .landing-blob {
   opacity: 0.6;
   mix-blend-mode: screen;
 }
@@ -112,6 +204,10 @@ html:not(.dark) .landing-bg__base {
   width: 700px;
   height: 700px;
   background: rgba(79, 70, 229, 0.12);
+  opacity: 0.3;
+}
+
+html.dark .landing-blob--left {
   opacity: 0.45;
 }
 
@@ -121,22 +217,27 @@ html:not(.dark) .landing-bg__base {
   width: 560px;
   height: 560px;
   background: rgba(6, 182, 212, 0.12);
+  opacity: 0.2;
+}
+
+html.dark .landing-blob--right {
   opacity: 0.35;
 }
 
-/* noise */
+/* Noise Texture */
 .landing-noise {
   position: absolute;
   inset: 0;
-  opacity: 0.05;
-  background-image: radial-gradient(rgba(255,255,255,.08) 1px, transparent 1px);
+  opacity: 0.03;
+  background-image: radial-gradient(rgba(0, 0, 0, 0.06) 1px, transparent 1px);
   background-size: 14px 14px;
 }
 
-/* Light: tắt noise cho sạch */
-html:not(.dark) .landing-noise { opacity: 0; }
+html.dark .landing-noise {
+  opacity: 0.05;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+}
 
-/* ===================== BUTTON SHINE giống bản cũ ===================== */
 .btn-shine::after {
   content: "";
   position: absolute;
@@ -144,42 +245,11 @@ html:not(.dark) .landing-noise { opacity: 0; }
   left: -110%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(to right, transparent, rgba(255,255,255,.18), transparent);
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.18), transparent);
   transform: skewX(-20deg);
   transition: left 700ms ease-in-out;
 }
-.btn-shine:hover::after { left: 110%; }
-.landing-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -10;
-  pointer-events: none;
-  overflow: hidden;
-}
 
-.landing-bg__base {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(1200px 700px at 50% 30%, rgba(37, 99, 235, 0.25), transparent 60%),
-              linear-gradient(to bottom, #0b1220 0%, #020617 55%, #020617 100%);
-}
-
-.landing-blob {
-  position: absolute;
-  width: 900px;
-  height: 900px;
-  filter: blur(80px);
-  opacity: 0.55;
-}
-
-.landing-blob--top { top: -520px; left: 20%; background: rgba(59, 130, 246, 0.35); }
-.landing-blob--left { bottom: -520px; left: -520px; background: rgba(14, 165, 233, 0.25); }
-.landing-blob--right { bottom: -520px; right: -520px; background: rgba(34, 197, 94, 0.18); }
-
-.landing-noise {
-  position: absolute;
-  inset: 0;
-  opacity: 0.06;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+.btn-shine:hover::after {
+  left: 110%;
 }

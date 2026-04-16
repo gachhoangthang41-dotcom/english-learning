@@ -1,0 +1,18 @@
+[33m8f7e543[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mUpdate1404[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{0}: reset: moving to origin/main
+[33mea83e95[m[33m ([m[1;31morigin/AI[m[33m)[m HEAD@{1}: reset: moving to HEAD~1
+[33m2d4d353[m[33m ([m[1;32mAI[m[33m)[m HEAD@{2}: checkout: moving from AI to Update1404
+[33m2d4d353[m[33m ([m[1;32mAI[m[33m)[m HEAD@{3}: commit: update1404
+[33mea83e95[m[33m ([m[1;31morigin/AI[m[33m)[m HEAD@{4}: reset: moving to origin/AI
+[33md65ce3e[m HEAD@{5}: reset: moving to HEAD
+[33md65ce3e[m HEAD@{6}: checkout: moving from Update to AI
+[33m0fdb40b[m[33m ([m[1;32mUpdate[m[33m)[m HEAD@{7}: commit: Lưu code dở dang trước khi switch sang nhánh AI
+[33m1912428[m[33m ([m[1;31morigin/Update[m[33m)[m HEAD@{8}: commit (amend): Update lan 2
+[33me16bf48[m HEAD@{9}: commit: Update
+[33m9cecd14[m HEAD@{10}: commit (merge): Merge AI branch into Update, keeping our local changes for conflicts
+[33mb7ea077[m HEAD@{11}: reset: moving to HEAD
+[33mb7ea077[m HEAD@{12}: commit: Luu code de gop
+[33m95bebc2[m HEAD@{13}: commit: thaydoilan3
+[33m52c81e7[m[33m ([m[1;31morigin/totuan2[m[33m, [m[1;31morigin/bviet[m[33m, [m[1;32mtotuan2[m[33m, [m[1;32mbviet[m[33m)[m HEAD@{14}: checkout: moving from totuan2 to Update
+[33m52c81e7[m[33m ([m[1;31morigin/totuan2[m[33m, [m[1;31morigin/bviet[m[33m, [m[1;32mtotuan2[m[33m, [m[1;32mbviet[m[33m)[m HEAD@{15}: checkout: moving from bviet to totuan2
+[33m52c81e7[m[33m ([m[1;31morigin/totuan2[m[33m, [m[1;31morigin/bviet[m[33m, [m[1;32mtotuan2[m[33m, [m[1;32mbviet[m[33m)[m HEAD@{16}: checkout: moving from main to bviet
+[33m8f7e543[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mUpdate1404[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m HEAD@{17}: clone: from https://github.com/gachhoangthang41-dotcom/english-learning.git

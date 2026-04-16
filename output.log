@@ -1,0 +1,16 @@
+Error: GoogleGenerativeAIFetchError: [GoogleGenerativeAI Error]: Error fetching from https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent: [400 Bad Request] Invalid value at 'system_instruction' (type.googleapis.com/google.ai.generativelanguage.v1beta.Content), "You are a helpful assistant." [{"@type":"type.googleapis.com/google.rpc.BadRequest","fieldViolations":[{"field":"system_instruction","description":"Invalid value at 'system_instruction' (type.googleapis.com/google.ai.generativelanguage.v1beta.Content), \"You are a helpful assistant.\""}]}]
+    at handleResponseNotOk (D:\english-learning\node_modules\@google\generative-ai\dist\index.js:434:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async makeRequest (D:\english-learning\node_modules\@google\generative-ai\dist\index.js:403:9)
+    at async generateContent (D:\english-learning\node_modules\@google\generative-ai\dist\index.js:867:22)
+    at async ChatSession.sendMessage (D:\english-learning\node_modules\@google\generative-ai\dist\index.js:1210:9)
+    at async test (D:\english-learning\test-gemini.ts:13:20) {
+  status: 400,
+  statusText: 'Bad Request',
+  errorDetails: [
+    {
+      '@type': 'type.googleapis.com/google.rpc.BadRequest',
+      fieldViolations: [Array]
+    }
+  ]
+}

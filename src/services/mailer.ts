@@ -12,6 +12,9 @@ export const transporter = nodemailer.createTransport({
   port,
   secure,
   auth: { user, pass },
+  tls: {
+    rejectUnauthorized: false, // Bỏ qua lỗi self-signed certificate (thường do môi trường local/antivirus)
+  },
 });
 
 export async function sendEmail(to: string, subject: string, html: string) {

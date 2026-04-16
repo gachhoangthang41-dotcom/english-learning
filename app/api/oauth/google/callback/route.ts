@@ -1,24 +1,32 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/prisma";
-import { SESSION_COOKIE_NAME, createSessionToken } from "@/lib/session";
+import { prisma } from '@/models/prisma';
+import { SESSION_COOKIE_NAME, createSessionToken } from '@/controllers/session';
 
 export const runtime = "nodejs";
 
+function getAuthPath(flow: string | undefined) {
+  return flow === "register" ? "/register" : "/login";
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
+  const appUrl = process.env.APP_URL || url.origin;
 
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
 
-  const savedState = (await cookies()).get("oauth_state")?.value;
-  const remember = (await cookies()).get("oauth_remember")?.value === "1";
+  const cookieStore = await cookies();
+  const savedState = cookieStore.get("oauth_state")?.value;
+  const remember = cookieStore.get("oauth_remember")?.value === "1";
+  const flow = cookieStore.get("oauth_flow")?.value;
+  const authPath = getAuthPath(flow);
 
   if (!code || !state || !savedState || savedState !== state) {
-    return NextResponse.redirect(`${process.env.APP_URL}/login?error=oauth_state_invalid`);
+    return NextResponse.redirect(`${appUrl}${authPath}?error=oauth_state_invalid`);
   }
 
-  const redirectUri = `${process.env.APP_URL}/api/oauth/google/callback`;
+  const redirectUri = `${appUrl}/api/oauth/google/callback`;
 
   // 1) Exchange code -> access_token
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -37,7 +45,7 @@ export async function GET(req: Request) {
   const accessToken = tokenData?.access_token;
 
   if (!accessToken) {
-    return NextResponse.redirect(`${process.env.APP_URL}/login?error=oauth_token_failed`);
+    return NextResponse.redirect(`${appUrl}${authPath}?error=oauth_token_failed`);
   }
 
   // 2) Get Google profile (v2 userinfo có field id)
@@ -53,10 +61,10 @@ export async function GET(req: Request) {
   const googleId = String(profile?.id || "").trim(); // ✅ chính là sub/google user id
 
   if (!email) {
-    return NextResponse.redirect(`${process.env.APP_URL}/login?error=oauth_no_email`);
+    return NextResponse.redirect(`${appUrl}${authPath}?error=oauth_no_email`);
   }
   if (!googleId) {
-    return NextResponse.redirect(`${process.env.APP_URL}/login?error=oauth_no_google_id`);
+    return NextResponse.redirect(`${appUrl}${authPath}?error=oauth_no_google_id`);
   }
 
   // ✅ lấy Level A1 để set mặc định
@@ -182,7 +190,7 @@ export async function GET(req: Request) {
     maxAge
   );
 
-  (await cookies()).set(SESSION_COOKIE_NAME, sessionToken, {
+  cookieStore.set(SESSION_COOKIE_NAME, sessionToken, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
@@ -191,8 +199,9 @@ export async function GET(req: Request) {
   });
 
   // clear oauth cookies
-  (await cookies()).set("oauth_state", "", { path: "/", maxAge: 0 });
-  (await cookies()).set("oauth_remember", "", { path: "/", maxAge: 0 });
+  cookieStore.set("oauth_state", "", { path: "/", maxAge: 0 });
+  cookieStore.set("oauth_remember", "", { path: "/", maxAge: 0 });
+  cookieStore.set("oauth_flow", "", { path: "/", maxAge: 0 });
 
-  return NextResponse.redirect(`${process.env.APP_URL}/home`);
+  return NextResponse.redirect(`${appUrl}/home`);
 }

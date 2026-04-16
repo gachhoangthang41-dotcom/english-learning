@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { HelpCircle, Eye, EyeOff } from "lucide-react";
 import { FaGoogle, FaFacebookF } from "react-icons/fa";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeToggle } from '@/views/components/theme-toggle';
 import { useRouter } from "next/navigation";
 
 type MsgType = "error" | "success" | "info";
@@ -97,7 +97,7 @@ export default function LoginPage() {
   // ✅ Nút Google OAuth
   function loginWithGoogle() {
     const rememberValue = remember ? "1" : "0";
-    window.location.href = `/api/oauth/google?remember=${rememberValue}`;
+    window.location.href = `/api/oauth/google?remember=${rememberValue}&flow=login`;
   }
 
   const messageClass =
@@ -117,9 +117,9 @@ export default function LoginPage() {
         <div className="landing-noise" />
       </div>
 
-      <header className="site-header w-full border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+      <header className="site-header sticky top-0 z-50 flex w-full items-center justify-between border-b border-slate-200/80 bg-white/65 px-6 py-4 backdrop-blur dark:border-white/5 dark:bg-transparent">
         <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full grid place-items-center border border-white/10 bg-white/5 overflow-hidden">
+          <span className="w-8 h-8 rounded-full grid place-items-center border border-slate-300 bg-white/80 shadow-sm overflow-hidden dark:border-white/10 dark:bg-white/5 dark:shadow-none">
             <Image
               src="/assets/icons/chick.png"
               alt="Logo"
@@ -130,15 +130,15 @@ export default function LoginPage() {
             />
           </span>
 
-          <Link href="/" className="text-lg sm:text-xl font-extrabold tracking-tight">
-            Shadowing <span className="text-blue-400">&amp;</span> Dictation
+          <Link href="/" className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-950 dark:text-white">
+            Shadowing <span className="text-blue-600 dark:text-blue-400">&amp;</span> Dictation
           </Link>
         </div>
 
         <div className="flex items-center gap-4 sm:gap-6">
           <Link
             href="/help"
-            className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-blue-400 transition-colors"
+            className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-950 transition-colors dark:text-slate-400 dark:hover:text-blue-400"
           >
             <HelpCircle className="w-4 h-4" />
             Trợ giúp
@@ -148,7 +148,7 @@ export default function LoginPage() {
 
           <Link
             href="/register"
-            className="text-sm font-bold px-4 py-2 rounded-full text-blue-400 hover:bg-blue-500/10 border border-transparent hover:border-blue-400/25 transition"
+            className="text-sm font-bold px-4 py-2 rounded-full text-blue-700 hover:bg-blue-50 border border-blue-200/60 hover:border-blue-300 transition dark:text-blue-400 dark:hover:bg-blue-500/10 dark:border-transparent dark:hover:border-blue-400/25"
           >
             Đăng ký
           </Link>
@@ -159,21 +159,21 @@ export default function LoginPage() {
         <div className="mx-auto w-full max-w-6xl px-4 sm:px-8 py-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
             <section className="w-full">
-              <div className="w-full max-w-[480px]">
+              <div className="w-full max-w-120">
                 <div className="flex flex-col gap-2 text-center sm:text-left">
-                  <h1 className="text-3xl sm:text-4xl font-black leading-tight tracking-tight">Chào mừng trở lại!</h1>
-                  <p className="text-muted text-base leading-normal">Tiếp tục hành trình chinh phục tiếng Anh của bạn.</p>
+                  <h1 className="text-3xl sm:text-4xl font-black leading-tight tracking-tight text-slate-950 dark:text-white">Chào mừng trở lại!</h1>
+                  <p className="text-base leading-normal text-slate-600 dark:text-muted">Tiếp tục hành trình chinh phục tiếng Anh của bạn.</p>
                 </div>
 
                 <form onSubmit={onSubmit} className="flex flex-col gap-5 mt-6">
                   <div className="flex flex-col gap-2">
-                    <label className="text-base font-semibold">Email hoặc tên người dùng</label>
+                    <label className="text-base font-semibold text-slate-900 dark:text-white">Email hoặc tên người dùng</label>
                     <input
                       value={identifier}
                       onChange={(e) => setIdentifier(e.target.value)}
                       placeholder="email@example.com hoặc username"
                       className="w-full rounded-lg h-14 px-4 text-base
-                                 border border-black/15 bg-white text-slate-900 placeholder:text-slate-400
+                                 border border-slate-300 bg-white/95 shadow-sm text-slate-900 placeholder:text-slate-500
                                  focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
                                  dark:border-[#324d67] dark:bg-[#192633] dark:text-white dark:placeholder:text-[#92adc9]
                                  transition-all"
@@ -181,7 +181,7 @@ export default function LoginPage() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <label className="text-base font-semibold">Mật khẩu</label>
+                    <label className="text-base font-semibold text-slate-900 dark:text-white">Mật khẩu</label>
 
                     <div className="relative flex w-full items-stretch rounded-lg overflow-hidden">
                       <input
@@ -191,7 +191,7 @@ export default function LoginPage() {
                         placeholder="••••••••"
                         autoComplete="current-password"
                         className="w-full h-14 px-4 text-base
-                                   border border-r-0 border-black/15 bg-white text-slate-900 placeholder:text-slate-400
+                                   border border-r-0 border-slate-300 bg-white/95 shadow-sm text-slate-900 placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
                                    dark:border-[#324d67] dark:bg-[#192633] dark:text-white dark:placeholder:text-[#92adc9]
                                    transition-all"
@@ -201,7 +201,7 @@ export default function LoginPage() {
                         type="button"
                         onClick={() => setShowPw((v) => !v)}
                         className="px-4 grid place-items-center
-                                   border border-l-0 border-black/15 bg-white text-slate-600 hover:bg-slate-50
+                                   border border-l-0 border-slate-300 bg-white/95 text-slate-700 hover:bg-slate-100
                                    dark:border-[#324d67] dark:bg-[#192633] dark:text-[#92adc9] dark:hover:bg-[#233648]
                                    transition-colors"
                         aria-label={showPw ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
@@ -222,17 +222,17 @@ export default function LoginPage() {
                                    focus:ring-2 focus:ring-blue-500/40 transition-all cursor-pointer
                                    dark:border-[#324d67]"
                       />
-                      <span className="text-sm sm:text-base text-muted group-hover:opacity-90 transition">
+                      <span className="text-sm sm:text-base text-slate-700 group-hover:opacity-90 transition dark:text-muted">
                         Ghi nhớ đăng nhập
                       </span>
                     </label>
 
-                    <Link href="/forgot-password" className="text-sm sm:text-base font-bold text-accent hover:opacity-80 transition">
+                    <Link href="/forgot-password" className="text-sm sm:text-base font-bold text-blue-700 hover:opacity-80 transition dark:text-accent">
                       Quên mật khẩu?
                     </Link>
                   </div>
 
-                  <div className={["min-h-[20px] text-sm rounded-lg p-3", msg ? messageClass : "hidden"].join(" ")}>
+                  <div className={["min-h-5 text-sm rounded-lg p-3", msg ? messageClass : "hidden"].join(" ")}>
                     {msg?.text || ""}
                   </div>
 
@@ -249,9 +249,9 @@ export default function LoginPage() {
                   </button>
 
                   <div className="relative flex py-2 items-center">
-                    <div className="flex-grow border-t border-black/15 dark:border-[#324d67]" />
-                    <span className="flex-shrink mx-4 text-muted text-sm">Hoặc</span>
-                    <div className="flex-grow border-t border-black/15 dark:border-[#324d67]" />
+                    <div className="grow border-t border-black/15 dark:border-[#324d67]" />
+                    <span className="shrink mx-4 text-slate-500 dark:text-muted text-sm font-medium">Hoặc</span>
+                    <div className="grow border-t border-black/15 dark:border-[#324d67]" />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
@@ -259,8 +259,8 @@ export default function LoginPage() {
                     <button
                       type="button"
                       className="flex items-center justify-center gap-2 h-12 rounded-lg
-                                 border border-black/15 bg-white hover:bg-slate-50
-                                 text-slate-800 font-semibold
+                                 border border-slate-300 bg-white/95 hover:bg-slate-100 shadow-sm
+                                 text-slate-900 font-semibold
                                  dark:border-[#324d67] dark:bg-[#192633] dark:hover:bg-[#233648] dark:text-white
                                  transition-all"
                       onClick={loginWithGoogle}
@@ -273,8 +273,8 @@ export default function LoginPage() {
                     <button
                       type="button"
                       className="flex items-center justify-center gap-2 h-12 rounded-lg
-                                 border border-black/15 bg-white hover:bg-slate-50
-                                 text-slate-800 font-semibold
+                                 border border-slate-300 bg-white/95 hover:bg-slate-100 shadow-sm
+                                 text-slate-900 font-semibold
                                  dark:border-[#324d67] dark:bg-[#192633] dark:hover:bg-[#233648] dark:text-white
                                  transition-all"
                       onClick={() => alert("Tích hợp Facebook sau")}
@@ -285,9 +285,9 @@ export default function LoginPage() {
                   </div>
 
                   <div className="mt-4 text-center">
-                    <p className="text-muted text-sm sm:text-base">
+                    <p className="text-slate-600 dark:text-muted text-sm sm:text-base">
                       Chưa có tài khoản?
-                      <Link href="/register" className="font-extrabold text-accent hover:opacity-80 transition ml-1">
+                      <Link href="/register" className="ml-1 font-extrabold text-blue-700 hover:opacity-80 transition dark:text-accent">
                         Đăng ký ngay
                       </Link>
                     </p>
@@ -297,12 +297,12 @@ export default function LoginPage() {
             </section>
 
             <section className="w-full">
-              <div className="rounded-2xl px-6 sm:px-10 py-10 glass-card">
+              <div className="rounded-2xl border border-slate-200 bg-white/72 px-6 py-10 shadow-xl shadow-slate-300/35 sm:px-10 dark:border-white/10 dark:bg-transparent dark:shadow-none glass-card">
                 <div className="text-center">
-                  <h2 className="text-2xl sm:text-3xl font-black tracking-tight">
+                  <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-950 dark:text-white">
                     How Practicing Dictation &amp; Shadowing Improves Your English Skills
                   </h2>
-                  <p className="mt-2 text-muted text-sm sm:text-base">
+                  <p className="mt-2 text-slate-600 dark:text-muted text-sm sm:text-base">
                     When practicing exercises, you will go through 4 main steps,
                     all of them are equally important!
                   </p>
@@ -328,8 +328,8 @@ function Step({ img, title, desc }: { img: string; title: string; desc: string }
   return (
     <div className="text-center">
       <Image src={img} alt={title} width={96} height={96} className="mx-auto h-20 w-20 object-contain" />
-      <h3 className="mt-4 text-lg sm:text-xl font-extrabold">{title}</h3>
-      <p className="mt-2 text-sm text-muted leading-relaxed">{desc}</p>
+      <h3 className="mt-4 text-lg sm:text-xl font-extrabold text-slate-950 dark:text-white">{title}</h3>
+      <p className="mt-2 text-sm text-slate-600 dark:text-muted leading-relaxed">{desc}</p>
     </div>
   );
 }

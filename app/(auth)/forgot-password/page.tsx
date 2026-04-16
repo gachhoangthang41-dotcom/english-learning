@@ -3,13 +3,18 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { HelpCircle, Mail } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeToggle } from '@/views/components/theme-toggle';
 
 type MsgType = "error" | "success" | "info";
 
+const PENDING_RESET_IDENTIFIER_KEY = "pending_reset_identifier";
+
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = React.useState("");
+  const router = useRouter();
+
+  const [identifier, setIdentifier] = React.useState("");
   const [submitting, setSubmitting] = React.useState(false);
   const [msg, setMsg] = React.useState<{ type: MsgType; text: string } | null>(null);
 
@@ -21,21 +26,21 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     if (submitting) return;
 
-    const v = email.trim().toLowerCase();
+    const v = identifier.trim();
     if (!v) {
-      showMessage("error", "Vui lòng nhập email.");
+      showMessage("error", "Vui lòng nhập email hoặc tên đăng nhập.");
       return;
     }
 
     setSubmitting(true);
-    showMessage("info", "Đang gửi link đặt lại mật khẩu...");
+    showMessage("info", "Đang gửi mã xác minh...");
 
     try {
       const res = await fetch("/api/auth/password/forgot", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ email: v }),
+        body: JSON.stringify({ identifier: v }),
       });
 
       const data = await res.json().catch(() => null);
@@ -45,16 +50,14 @@ export default function ForgotPasswordPage() {
         return;
       }
 
-      // Lưu email để reset page hiển thị đẹp hơn (optional)
       try {
-        localStorage.setItem("pending_reset_email", v);
+        localStorage.setItem(PENDING_RESET_IDENTIFIER_KEY, v);
       } catch {}
 
-      showMessage(
-        "success",
-        data?.message ||
-          "Đã gửi link đặt lại mật khẩu. Vui lòng kiểm tra Gmail (Inbox/Spam/Promotions)."
-      );
+      showMessage("success", data?.message || "Đã gửi mã xác minh.");
+      setTimeout(() => {
+        router.push(`/reset-password?identifier=${encodeURIComponent(v)}`);
+      }, 350);
     } catch (err) {
       console.error(err);
       showMessage("error", "Không thể kết nối đến máy chủ.");
@@ -82,9 +85,9 @@ export default function ForgotPasswordPage() {
       </div>
 
       {/* Header */}
-      <header className="site-header w-full border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
-        <Link href="/" className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full grid place-items-center border border-white/10 bg-white/5 overflow-hidden">
+        <header className="site-header sticky top-0 z-50 flex w-full items-center justify-between border-b border-slate-200/80 bg-white/65 px-6 py-4 backdrop-blur dark:border-white/5 dark:bg-transparent">
+          <div className="flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full grid place-items-center border border-slate-300 bg-white/80 shadow-sm overflow-hidden dark:border-white/10 dark:bg-white/5 dark:shadow-none">
             <Image
               src="/assets/icons/chick.png"
               alt="Logo"
@@ -95,52 +98,59 @@ export default function ForgotPasswordPage() {
             />
           </span>
 
-          <h2 className="text-lg font-bold leading-tight tracking-tight">
-            Shadowing <span className="text-blue-400">&amp;</span> Dictation
-          </h2>
-        </Link>
+            <Link href="/" className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-950 dark:text-white">
+              Shadowing <span className="text-blue-600 dark:text-blue-400">&amp;</span> Dictation
+            </Link>
+          </div>
 
         <div className="flex items-center gap-4 sm:gap-6">
           <Link
             href="/help"
-            className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-blue-400 transition-colors"
+              className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-950 transition-colors dark:text-slate-400 dark:hover:text-blue-400"
           >
             <HelpCircle className="w-4 h-4" />
             Trợ giúp
           </Link>
 
           <ThemeToggle />
+
+            <Link
+              href="/login"
+              className="text-sm font-bold px-4 py-2 rounded-full text-blue-700 hover:bg-blue-50 border border-blue-200/60 hover:border-blue-300 transition dark:text-blue-400 dark:hover:bg-blue-500/10 dark:border-transparent dark:hover:border-blue-400/25"
+            >
+              Đăng nhập
+            </Link>
         </div>
       </header>
 
       {/* Main */}
       <main className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-[520px] rounded-2xl px-6 sm:px-10 py-10 glass-card shadow-xl">
+        <div className="glass-card w-full max-w-130 rounded-2xl border border-slate-200 bg-white/78 px-6 py-10 shadow-xl shadow-slate-300/35 sm:px-10 dark:border-white/10 dark:bg-transparent dark:shadow-none">
           <div className="flex flex-col items-center text-center gap-4">
             <div className="flex items-center justify-center size-16 rounded-full bg-blue-500/10 ring-1 ring-blue-400/20 mb-2">
               <Mail className="w-7 h-7 text-blue-400" />
             </div>
 
             <div className="space-y-2">
-              <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight">
+              <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight text-slate-950 dark:text-white">
                 Quên mật khẩu
               </h1>
-              <p className="text-muted text-base leading-relaxed max-w-[420px] mx-auto">
-                Nhập email của bạn. Chúng tôi sẽ gửi link để bạn đặt lại mật khẩu.
+              <p className="mx-auto max-w-105 text-base leading-relaxed text-slate-600 dark:text-muted">
+                Nhập email hoặc tên đăng nhập đã đăng ký. Chúng tôi sẽ gửi mã xác minh về email của bạn để đặt lại mật khẩu.
               </p>
             </div>
           </div>
 
           <form onSubmit={onSubmit} className="flex flex-col gap-5 mt-8">
             <div className="flex flex-col gap-2">
-              <label className="text-base font-semibold">Email</label>
+              <label className="text-base font-semibold text-slate-900 dark:text-white">Email hoặc tên đăng nhập</label>
               <input
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="email@example.com"
-                autoComplete="email"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="email@example.com hoặc username"
+                autoComplete="username"
                 className="w-full rounded-lg h-14 px-4 text-base
-                           border border-black/15 bg-white text-slate-900 placeholder:text-slate-400
+                             border border-slate-300 bg-white/95 shadow-sm text-slate-900 placeholder:text-slate-500
                            focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
                            dark:border-[#324d67] dark:bg-[#192633] dark:text-white dark:placeholder:text-[#92adc9]
                            transition-all"
@@ -149,7 +159,7 @@ export default function ForgotPasswordPage() {
 
             <div
               className={[
-                "min-h-[20px] text-sm rounded-lg p-3",
+                "min-h-5 text-sm rounded-lg p-3",
                 msg ? messageClass : "hidden",
               ].join(" ")}
             >
@@ -166,14 +176,14 @@ export default function ForgotPasswordPage() {
                 disabled:opacity-50 disabled:cursor-not-allowed
               "
             >
-              {submitting ? "Đang gửi..." : "Gửi link đặt lại mật khẩu"}
+              {submitting ? "Đang gửi..." : "Tiếp tục"}
             </button>
 
             <div className="w-full h-px bg-white/10" />
 
             <Link
               href="/login"
-              className="text-sm font-medium text-slate-300 hover:text-blue-400 transition-colors text-center"
+              className="text-center text-sm font-medium text-slate-600 hover:text-blue-700 transition-colors dark:text-slate-300 dark:hover:text-blue-400"
             >
               ← Quay lại đăng nhập
             </Link>

@@ -1,36 +1,49 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import crypto from "crypto";
+import { prisma } from '@/models/prisma';
 import bcrypt from "bcryptjs";
+import { verifyCode } from '@/services/otp';
 
 export const runtime = "nodejs";
 
-function sha256(input: string) {
-  return crypto.createHash("sha256").update(input).digest("hex");
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""));
+}
+
+async function findUserByIdentifier(identifier: string) {
+  const normalized = String(identifier || "").trim();
+  if (!normalized) return null;
+
+  if (isValidEmail(normalized)) {
+    return prisma.user.findUnique({ where: { email: normalized.toLowerCase() } });
+  }
+
+  return prisma.user.findUnique({ where: { username: normalized } });
 }
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json().catch(() => ({} as any));
+    const body = await req.json().catch(() => ({}));
 
-    const email = String(body?.email ?? "").trim().toLowerCase();
-    const token = String(body?.token ?? "").trim();
-
-    // ✅ accept both newPassword & password
+    const identifier = String(body?.identifier ?? body?.email ?? "").trim();
+    const code = String(body?.code ?? "").trim();
     const newPassword = String(body?.newPassword ?? body?.password ?? "").trim();
 
-    const confirmPassword = String(
-      body?.confirmPassword ?? body?.confirm ?? ""
-    ).trim();
+    const confirmPassword = String(body?.confirmPassword ?? body?.confirm ?? "").trim();
 
-    if (!email || !token || !newPassword || !confirmPassword) {
+    if (!identifier || !code || !newPassword || !confirmPassword) {
       return NextResponse.json(
         { status: "error", message: "Thiếu dữ liệu." },
         { status: 400 }
       );
     }
 
-    // ✅ giữ đúng rule client: 7–14 ký tự
+    if (!/^\d{6}$/.test(code)) {
+      return NextResponse.json(
+        { status: "error", message: "Mã xác minh phải gồm đúng 6 chữ số." },
+        { status: 400 }
+      );
+    }
+
     if (newPassword.length < 7 || newPassword.length > 14) {
       return NextResponse.json(
         { status: "error", message: "Mật khẩu phải từ 7 đến 14 ký tự." },
@@ -45,36 +58,41 @@ export async function POST(req: Request) {
       );
     }
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await findUserByIdentifier(identifier);
     if (!user) {
       return NextResponse.json(
-        { status: "error", message: "Link không hợp lệ." },
+        { status: "error", message: "Phiên đặt lại mật khẩu không hợp lệ." },
         { status: 400 }
       );
     }
-
-    const tokenHash = sha256(token);
 
     const t = await prisma.token.findFirst({
       where: {
         userId: user.id,
         type: "PASSWORD_RESET",
         usedAt: null,
-        codeHash: tokenHash,
       },
       orderBy: { sentAt: "desc" },
     });
 
     if (!t) {
       return NextResponse.json(
-        { status: "error", message: "Link không hợp lệ hoặc đã dùng." },
+        { status: "error", message: "Mã xác minh không hợp lệ hoặc đã dùng." },
         { status: 400 }
       );
     }
 
     if (Date.now() > new Date(t.expiresAt).getTime()) {
       return NextResponse.json(
-        { status: "error", message: "Link đã hết hạn." },
+        { status: "error", message: "Mã xác minh đã hết hạn." },
+        { status: 400 }
+      );
+    }
+
+    const ok = await verifyCode(code, t.codeHash);
+    if (!ok) {
+      return NextResponse.json(
+        { status: "error", message: "Mã xác minh không đúng." },
         { status: 400 }
       );
     }
@@ -88,6 +106,10 @@ export async function POST(req: Request) {
       }),
       prisma.token.update({
         where: { id: t.id },
+        data: { usedAt: new Date() },
+      }),
+      prisma.token.updateMany({
+        where: { userId: user.id, type: "PASSWORD_RESET", usedAt: null },
         data: { usedAt: new Date() },
       }),
     ]);

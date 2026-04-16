@@ -5,7 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { HelpCircle, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { FaGoogle, FaFacebookF } from "react-icons/fa";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeToggle } from '@/views/components/theme-toggle';
 
 type MsgType = "error" | "success" | "info";
 
@@ -37,6 +37,10 @@ export default function RegisterPage() {
 
   function showMessage(type: MsgType, text: string) {
     setMsg({ type, text });
+  }
+
+  function registerWithGoogle() {
+    window.location.href = "/api/oauth/google?remember=0&flow=register";
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -123,9 +127,9 @@ export default function RegisterPage() {
       </div>
 
       {/* Header: dùng style giống Login */}
-      <header className="site-header w-full border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+      <header className="site-header sticky top-0 z-50 flex w-full items-center justify-between border-b border-slate-200/80 bg-white/65 px-6 py-4 backdrop-blur dark:border-white/5 dark:bg-transparent">
         <div className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full grid place-items-center border border-white/10 bg-white/5 overflow-hidden">
+          <span className="w-8 h-8 rounded-full grid place-items-center border border-slate-300 bg-white/80 shadow-sm overflow-hidden dark:border-white/10 dark:bg-white/5 dark:shadow-none">
             <Image
               src="/assets/icons/chick.png"
               alt="Logo"
@@ -136,15 +140,15 @@ export default function RegisterPage() {
             />
           </span>
 
-          <Link href="/" className="text-lg sm:text-xl font-extrabold tracking-tight">
-            Shadowing <span className="text-blue-400">&amp;</span> Dictation
+          <Link href="/" className="text-lg sm:text-xl font-extrabold tracking-tight text-slate-950 dark:text-white">
+            Shadowing <span className="text-blue-600 dark:text-blue-400">&amp;</span> Dictation
           </Link>
         </div>
 
         <div className="flex items-center gap-4 sm:gap-6">
           <Link
             href="/help"
-            className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-blue-400 transition-colors"
+            className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-950 transition-colors dark:text-slate-400 dark:hover:text-blue-400"
           >
             <HelpCircle className="w-4 h-4" />
             Trợ giúp
@@ -154,7 +158,7 @@ export default function RegisterPage() {
 
           <Link
             href="/login"
-            className="text-sm font-bold px-4 py-2 rounded-full text-blue-400 hover:bg-blue-500/10 border border-transparent hover:border-blue-400/25 transition"
+            className="text-sm font-bold px-4 py-2 rounded-full text-blue-700 hover:bg-blue-50 border border-blue-200/60 hover:border-blue-300 transition dark:text-blue-400 dark:hover:bg-blue-500/10 dark:border-transparent dark:hover:border-blue-400/25"
           >
             Đăng nhập
           </Link>
@@ -167,10 +171,10 @@ export default function RegisterPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             {/* LEFT: REGISTER CARD */}
             <section className="w-full order-2 lg:order-1">
-              <div className="w-full max-w-[520px] rounded-2xl px-6 sm:px-10 py-8 glass-card">
+              <div className="w-full max-w-[520px] rounded-2xl border border-slate-200 bg-white/78 px-6 py-8 shadow-xl shadow-slate-300/35 sm:px-10 dark:border-white/10 dark:bg-transparent dark:shadow-none glass-card">
                 <div className="mb-6">
-                  <h2 className="text-2xl font-black tracking-tight">Tạo tài khoản</h2>
-                  <p className="mt-1 text-sm text-muted">
+                  <h2 className="text-2xl font-black tracking-tight text-slate-950 dark:text-white">Tạo tài khoản</h2>
+                  <p className="mt-1 text-sm text-slate-600 dark:text-muted">
                     Điền thông tin bên dưới để đăng ký.
                   </p>
                 </div>
@@ -178,14 +182,14 @@ export default function RegisterPage() {
                 <form onSubmit={onSubmit} className="flex flex-col gap-4" autoComplete="off">
                   {/* Username */}
                   <label className="flex flex-col gap-2">
-                    <span className="text-sm font-semibold">Tên người dùng</span>
+                    <span className="text-sm font-semibold text-slate-900 dark:text-white">Tên người dùng</span>
                     <input
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       placeholder="Nhập tên của bạn"
                       className="
                         h-12 px-4 rounded-lg text-base
-                        border border-black/15 bg-white text-slate-900 placeholder:text-slate-400
+                        border border-slate-300 bg-white/95 shadow-sm text-slate-900 placeholder:text-slate-500
                         focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
                         dark:border-[#324d67] dark:bg-[#192633] dark:text-white dark:placeholder:text-[#92adc9]
                         transition-all
@@ -196,7 +200,7 @@ export default function RegisterPage() {
 
                   {/* Email */}
                   <label className="flex flex-col gap-2">
-                    <span className="text-sm font-semibold">Email</span>
+                    <span className="text-sm font-semibold text-slate-900 dark:text-white">Email</span>
                     <input
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
@@ -204,7 +208,7 @@ export default function RegisterPage() {
                       type="email"
                       className="
                         h-12 px-4 rounded-lg text-base
-                        border border-black/15 bg-white text-slate-900 placeholder:text-slate-400
+                        border border-slate-300 bg-white/95 shadow-sm text-slate-900 placeholder:text-slate-500
                         focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
                         dark:border-[#324d67] dark:bg-[#192633] dark:text-white dark:placeholder:text-[#92adc9]
                         transition-all
@@ -216,7 +220,7 @@ export default function RegisterPage() {
                   {/* Passwords */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <label className="flex flex-col gap-2">
-                      <span className="text-sm font-semibold">Mật khẩu</span>
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white">Mật khẩu</span>
                       <div className="relative flex w-full items-stretch rounded-lg overflow-hidden">
                         <input
                           value={pw}
@@ -225,7 +229,7 @@ export default function RegisterPage() {
                           placeholder="••••••••"
                           className="
                             w-full h-12 px-4 text-base
-                            border border-r-0 border-black/15 bg-white text-slate-900 placeholder:text-slate-400
+                            border border-r-0 border-slate-300 bg-white/95 shadow-sm text-slate-900 placeholder:text-slate-500
                             focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
                             dark:border-[#324d67] dark:bg-[#192633] dark:text-white dark:placeholder:text-[#92adc9]
                             transition-all
@@ -237,7 +241,7 @@ export default function RegisterPage() {
                           onClick={() => setShowPw((v) => !v)}
                           className="
                             px-4 grid place-items-center
-                            border border-l-0 border-black/15 bg-white text-slate-600 hover:bg-slate-50
+                            border border-l-0 border-slate-300 bg-white/95 text-slate-700 hover:bg-slate-100
                             dark:border-[#324d67] dark:bg-[#192633] dark:text-[#92adc9] dark:hover:bg-[#233648]
                             transition-colors
                           "
@@ -250,7 +254,7 @@ export default function RegisterPage() {
                     </label>
 
                     <label className="flex flex-col gap-2">
-                      <span className="text-sm font-semibold">Xác nhận</span>
+                      <span className="text-sm font-semibold text-slate-900 dark:text-white">Xác nhận</span>
                       <div className="relative flex w-full items-stretch rounded-lg overflow-hidden">
                         <input
                           value={pw2}
@@ -259,7 +263,7 @@ export default function RegisterPage() {
                           placeholder="••••••••"
                           className="
                             w-full h-12 px-4 text-base
-                            border border-r-0 border-black/15 bg-white text-slate-900 placeholder:text-slate-400
+                            border border-r-0 border-slate-300 bg-white/95 shadow-sm text-slate-900 placeholder:text-slate-500
                             focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500
                             dark:border-[#324d67] dark:bg-[#192633] dark:text-white dark:placeholder:text-[#92adc9]
                             transition-all
@@ -271,7 +275,7 @@ export default function RegisterPage() {
                           onClick={() => setShowPw2((v) => !v)}
                           className="
                             px-4 grid place-items-center
-                            border border-l-0 border-black/15 bg-white text-slate-600 hover:bg-slate-50
+                            border border-l-0 border-slate-300 bg-white/95 text-slate-700 hover:bg-slate-100
                             dark:border-[#324d67] dark:bg-[#192633] dark:text-[#92adc9] dark:hover:bg-[#233648]
                             transition-colors
                           "
@@ -296,13 +300,13 @@ export default function RegisterPage() {
                                  dark:border-[#324d67]"
                       required
                     />
-                    <span className="text-sm text-muted">
+                    <span className="text-sm text-slate-700 dark:text-muted leading-6">
                       Tôi đồng ý với{" "}
-                      <a className="text-accent hover:opacity-80 transition" href="#">
+                      <a className="font-semibold text-blue-700 hover:opacity-80 transition dark:text-accent" href="#">
                         Điều khoản sử dụng
                       </a>{" "}
                       và{" "}
-                      <a className="text-accent hover:opacity-80 transition" href="#">
+                      <a className="font-semibold text-blue-700 hover:opacity-80 transition dark:text-accent" href="#">
                         Chính sách bảo mật
                       </a>
                       .
@@ -312,7 +316,7 @@ export default function RegisterPage() {
                   {/* Message */}
                   <div
                     className={[
-                      "min-h-[20px] text-sm rounded-lg p-3",
+                      "min-h-5 text-sm rounded-lg p-3",
                       msg ? messageClass : "hidden",
                     ].join(" ")}
                   >
@@ -336,11 +340,11 @@ export default function RegisterPage() {
 
                   {/* Divider */}
                   <div className="relative flex py-2 items-center">
-                    <div className="flex-grow border-t border-black/15 dark:border-[#324d67]" />
-                    <span className="flex-shrink mx-4 text-muted text-sm">
+                    <div className="grow border-t border-slate-300 dark:border-[#324d67]" />
+                    <span className="shrink mx-4 text-slate-600 dark:text-muted text-sm font-medium">
                       Hoặc tiếp tục với
                     </span>
-                    <div className="flex-grow border-t border-black/15 dark:border-[#324d67]" />
+                    <div className="grow border-t border-slate-300 dark:border-[#324d67]" />
                   </div>
 
                   {/* Social */}
@@ -349,12 +353,12 @@ export default function RegisterPage() {
                       type="button"
                       className="
                         flex items-center justify-center gap-2 h-12 rounded-lg
-                        border border-black/15 bg-white hover:bg-slate-50
-                        text-slate-800 font-semibold
+                        border border-slate-300 bg-white/95 hover:bg-slate-100 shadow-sm
+                        text-slate-900 font-semibold
                         dark:border-[#324d67] dark:bg-[#192633] dark:hover:bg-[#233648] dark:text-white
                         transition-all
                       "
-                      onClick={() => alert("Tích hợp Google OAuth sau")}
+                      onClick={registerWithGoogle}
                     >
                       <FaGoogle className="w-5 h-5" />
                       <span>Google</span>
@@ -364,8 +368,8 @@ export default function RegisterPage() {
                       type="button"
                       className="
                         flex items-center justify-center gap-2 h-12 rounded-lg
-                        border border-black/15 bg-white hover:bg-slate-50
-                        text-slate-800 font-semibold
+                        border border-slate-300 bg-white/95 hover:bg-slate-100 shadow-sm
+                        text-slate-900 font-semibold
                         dark:border-[#324d67] dark:bg-[#192633] dark:hover:bg-[#233648] dark:text-white
                         transition-all
                       "
@@ -378,11 +382,11 @@ export default function RegisterPage() {
 
                   {/* Login link */}
                   <div className="mt-4 text-center">
-                    <p className="text-muted text-sm sm:text-base">
+                    <p className="text-slate-600 dark:text-muted text-sm sm:text-base">
                       Bạn đã có tài khoản?
                       <Link
                         href="/login"
-                        className="font-extrabold text-accent hover:opacity-80 transition ml-1"
+                        className="ml-1 font-extrabold text-blue-700 hover:opacity-80 transition dark:text-accent"
                       >
                         Đăng nhập
                       </Link>
@@ -395,18 +399,18 @@ export default function RegisterPage() {
             {/* RIGHT: HERO */}
             <section className="flex flex-col gap-6 order-1 lg:order-2">
               <div className="space-y-4">
-                <h1 className="text-4xl lg:text-5xl font-black leading-tight tracking-tight">
+                <h1 className="text-4xl lg:text-5xl font-black leading-tight tracking-tight text-slate-950 dark:text-white">
                   Bắt đầu hành trình <br />
-                  <span className="text-blue-400">thành thạo tiếng Anh</span>
+                  <span className="text-blue-600 dark:text-blue-400">thành thạo tiếng Anh</span>
                 </h1>
 
-                <p className="text-muted text-lg leading-relaxed max-w-[60ch]">
+                <p className="max-w-[60ch] text-lg leading-relaxed text-slate-700 dark:text-muted">
                   Tạo tài khoản miễn phí để luyện tập Shadowing &amp; Dictation với hàng ngàn
                   bài học chất lượng cao ngay hôm nay.
                 </p>
               </div>
 
-              <div className="w-full aspect-video rounded-2xl overflow-hidden relative shadow-2xl glass-card">
+              <div className="relative w-full aspect-video overflow-hidden rounded-2xl border border-slate-200 bg-white/70 shadow-2xl shadow-slate-300/35 dark:border-white/10 dark:bg-transparent dark:shadow-2xl glass-card">
                 <Image
                   src="/images/register-hero.png"
                   alt="Register hero"
@@ -415,23 +419,23 @@ export default function RegisterPage() {
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   priority={false}
                 />
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-600/20 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-tr from-blue-600/20 to-transparent" />
 
-                <div className="absolute bottom-4 left-4 right-4 p-4 rounded-xl glass-card">
+                <div className="absolute bottom-4 left-4 right-4 rounded-xl border border-slate-200 bg-white/88 p-4 shadow-lg shadow-slate-300/25 dark:border-white/10 dark:bg-[#192633]/85 dark:shadow-none glass-card">
                   <div className="flex items-center gap-3">
-                    <ShieldCheck className="w-5 h-5 text-blue-400" />
-                    <p className="text-sm font-semibold">
+                    <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <p className="text-sm font-semibold text-slate-900 dark:text-white">
                       Học tập kết hợp với AI hiệu quả
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-4 text-sm text-muted">
+              <div className="flex flex-wrap gap-4 text-sm text-slate-700 dark:text-muted">
                 {["Lộ trình cá nhân hoá", "Phát âm chuẩn quốc tế", "Theo dõi tiến độ"].map(
                   (t) => (
                     <div key={t} className="inline-flex items-center gap-2">
-                      <span className="inline-block size-5 rounded-full bg-blue-500/10 border border-blue-400/25 grid place-items-center">
+                      <span className="grid size-5 place-items-center rounded-full border border-blue-300 bg-blue-50 dark:border-blue-400/25 dark:bg-blue-500/10">
                         <span className="block size-2 rounded-full bg-blue-400" />
                       </span>
                       {t}

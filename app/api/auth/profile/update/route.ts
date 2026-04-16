@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from '@/models/prisma';
 import { cookies } from "next/headers";
-import { verifySession, SESSION_COOKIE_NAME } from "@/lib/session";
+import { verifySession, SESSION_COOKIE_NAME } from '@/controllers/session';
 import bcrypt from "bcryptjs";
 
 export const runtime = "nodejs";

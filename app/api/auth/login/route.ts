@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { prisma } from "@/lib/prisma";
-import { gen6DigitCode, hashCode } from "@/lib/otp";
-import { sendEmail } from "@/lib/mailer";
+import { prisma } from '@/models/prisma';
+import { gen6DigitCode, hashCode } from '@/services/otp';
+import { sendEmail } from '@/services/mailer';
 
 export const runtime = "nodejs";
 

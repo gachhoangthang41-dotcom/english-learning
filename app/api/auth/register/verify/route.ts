@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { verifyCode } from "@/lib/otp";
+import { prisma } from '@/models/prisma';
+import { verifyCode } from '@/services/otp';
 
 export const runtime = "nodejs";
 

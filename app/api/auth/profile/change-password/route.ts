@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { prisma } from '@/models/prisma';
 import { cookies } from "next/headers";
-import { verifySession, SESSION_COOKIE_NAME } from "@/lib/session";
+import { verifySession, SESSION_COOKIE_NAME } from '@/controllers/session';
 import bcrypt from "bcryptjs";
 
 export const runtime = "nodejs";
@@ -26,6 +26,10 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.findUnique({ where: { id: sess.userId } });
     if (!user) return NextResponse.json({ status: "error", message: "Không tìm thấy tài khoản." }, { status: 404 });
+
+    if (!user.passwordHash) {
+      return NextResponse.json({ status: "error", message: "Tài khoản không có mật khẩu." }, { status: 400 });
+    }
 
     const ok = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!ok) return NextResponse.json({ status: "error", message: "Mật khẩu hiện tại không đúng." }, { status: 400 });

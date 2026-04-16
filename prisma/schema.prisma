@@ -1,25 +1,9 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// prisma/schema.prisma
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider = "postgresql"
-}
-
-enum TokenType {
-  EMAIL_VERIFY
-  LOGIN_2FA
-  PASSWORD_RESET
 }
 
 model Account {
@@ -35,8 +19,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@index([userId])
@@ -47,8 +30,7 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -61,9 +43,146 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// -------------------- LEARNING (YOUR EXISTING) -------------------- 
+model User {
+  id                String                 @id @default(cuid())
+  email             String                 @unique
+  username          String?                @unique
+  displayName       String?
+  passwordHash      String?
+  role              String                 @default("user")
+  emailVerifiedAt   DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  avatarUrl         String?
+  avatarPublicId    String?
+  dailyGoalMin      Int                    @default(15)
+  levelId           String?
+  googleSub         String?                @unique
+  learnedWordsCount Int                    @default(0)
+  oauthProvider     String?
+  accounts          Account[]
+  learnedWords      LearningProgress[]
+  sessions          Session[]
+  tokens            Token[]
+  level             Level?                 @relation(fields: [levelId], references: [id])
+  progress          UserExerciseProgress[]
+
+  @@index([levelId])
+}
+
+model Token {
+  id        String    @id @default(cuid())
+  type      TokenType
+  codeHash  String
+  expiresAt DateTime
+  sentAt    DateTime  @default(now())
+  usedAt    DateTime?
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, type, expiresAt])
+  @@index([userId, type, sentAt])
+}
+
+model Level {
+  id                      String    @id @default(cuid())
+  code                    CefrLevel @unique
+  name                    String
+  description             String?
+  order                   Int       @unique
+  recommendedMinPerLesson Int       @default(10)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  lessons                 Lesson[]
+  users                   User[]
+}
+
+model Lesson {
+  id           String     @id @default(cuid())
+  levelId      String
+  title        String
+  description  String?
+  estimatedMin Int        @default(10)
+  primarySkill SkillType  @default(LISTENING)
+  order        Int
+  isPublished  Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  exercises    Exercise[]
+  level        Level      @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@unique([levelId, order])
+  @@index([levelId, isPublished])
+}
+
+model Exercise {
+  id           String                 @id @default(cuid())
+  lessonId     String
+  type         ExerciseType
+  skill        SkillType
+  title        String
+  instruction  String?
+  mediaUrl     String?
+  contentJson  Json?
+  estimatedMin Int                    @default(5)
+  order        Int
+  isPublished  Boolean                @default(false)
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  lesson       Lesson                 @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  progress     UserExerciseProgress[]
+
+  @@unique([lessonId, order])
+  @@index([lessonId, isPublished])
+  @@index([type, skill])
+}
+
+model UserExerciseProgress {
+  id             String         @id @default(cuid())
+  userId         String
+  exerciseId     String
+  status         ProgressStatus @default(NOT_STARTED)
+  progressPct    Int            @default(0)
+  timeSpentMin   Int            @default(0)
+  score          Float?
+  lastAccessedAt DateTime?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  exercise       Exercise       @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, exerciseId])
+  @@index([userId, status])
+  @@index([exerciseId])
+}
+
+model LearningProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  level     String
+  wordId    Int
+  word          String
+  meaning       String
+  pronunciation String?
+  partOfSpeech  String?
+  learnedAt     DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, level, wordId])
+  @@index([userId, learnedAt])
+  @@index([userId, level])
+}
+
+enum TokenType {
+  EMAIL_VERIFY
+  LOGIN_2FA
+  PASSWORD_RESET
+}
 
 enum CefrLevel {
+  PRE_A1
   A1
   A2
   B1
@@ -88,161 +207,4 @@ enum ProgressStatus {
   NOT_STARTED
   IN_PROGRESS
   COMPLETED
-}
-
-model User {
-  id String @id @default(cuid())
-
-  // ✅ email OAuth luôn có thể null ở vài provider,
-  // nhưng để bạn giữ logic cũ + API /me, mình vẫn giữ email unique
-  // -> với Facebook bạn phải xin quyền email, nếu không có email thì chặn signIn.
-  email String @unique
-
-  // ✅ OAuth user lúc đầu chưa có username => cho phép NULL
-  username String? @unique
-
-  // ✅ biệt danh (hiển thị trong app)
-  displayName String?
-
-  // ✅ OAuth user không có password => cho phép NULL
-  passwordHash String?
-
-  role            String    @default("user")
-  emailVerifiedAt DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  avatarUrl      String? @db.Text
-  avatarPublicId String? @db.Text
-
-  googleSub     String? @unique
-  oauthProvider String?
-
-  // ✅ mục tiêu học/ngày (phút)
-  dailyGoalMin Int @default(15)
-
-  // ✅ level hiện tại của user (để lọc bài theo trình độ)
-  levelId String?
-  level   Level?  @relation(fields: [levelId], references: [id], onDelete: SetNull)
-
-  // ✅ your existing tokens + progress
-  tokens   Token[]
-  progress UserExerciseProgress[]
-
-  // ✅ NextAuth relations
-  accounts Account[]
-  sessions Session[]
-
-  @@index([levelId])
-}
-
-model Token {
-  id        String    @id @default(cuid())
-  type      TokenType
-  codeHash  String
-  expiresAt DateTime
-  sentAt    DateTime  @default(now())
-  usedAt    DateTime?
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, type, expiresAt])
-  @@index([userId, type, sentAt])
-}
-
-// ✅ Level CEFR (A1..C2)
-model Level {
-  id          String    @id @default(cuid())
-  code        CefrLevel @unique
-  name        String
-  description String?
-  order       Int       @unique
-
-  recommendedMinPerLesson Int @default(10)
-
-  lessons Lesson[]
-  users   User[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-// ✅ Lesson: 1 bài học thuộc 1 level
-model Lesson {
-  id      String @id @default(cuid())
-  levelId String
-  level   Level  @relation(fields: [levelId], references: [id], onDelete: Cascade)
-
-  title       String
-  description String?
-
-  estimatedMin Int       @default(10)
-  primarySkill SkillType @default(LISTENING)
-
-  order       Int
-  isPublished Boolean @default(false)
-
-  exercises Exercise[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([levelId, order])
-  @@index([levelId, isPublished])
-}
-
-model Exercise {
-  id       String @id @default(cuid())
-  lessonId String
-  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
-
-  type  ExerciseType
-  skill SkillType
-
-  title       String
-  instruction String?
-
-  mediaUrl    String? @db.Text
-  contentJson Json?
-
-  estimatedMin Int @default(5)
-
-  order       Int
-  isPublished Boolean @default(false)
-
-  progress UserExerciseProgress[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([lessonId, order])
-  @@index([lessonId, isPublished])
-  @@index([type, skill])
-}
-
-model UserExerciseProgress {
-  id         String @id @default(cuid())
-  userId     String
-  exerciseId String
-
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
-
-  status       ProgressStatus @default(NOT_STARTED)
-  progressPct  Int            @default(0)
-  timeSpentMin Int            @default(0)
-
-  score          Float?
-  lastAccessedAt DateTime?
-
-  startedAt   DateTime?
-  completedAt DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([userId, exerciseId])
-  @@index([userId, status])
-  @@index([exerciseId])
 }

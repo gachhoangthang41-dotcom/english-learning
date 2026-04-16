@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { verifySession } from "@/lib/session";
-import { cloudinary } from "@/lib/cloudinary";
+import { prisma } from '@/models/prisma';
+import { verifySession } from '@/controllers/session';
+import { cloudinary } from '@/services/cloudinary';
 
 export const runtime = "nodejs";
 

@@ -4,8 +4,9 @@ import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { HelpCircle } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { ThemeToggle } from '@/views/components/theme-toggle';
 import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 type MsgType = "error" | "success" | "info";
 
@@ -17,6 +18,14 @@ function onlyDigits(s: string) {
 }
 
 export default function VerifyLoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Đang tải...</div>}>
+      <VerifyLoginContent />
+    </Suspense>
+  );
+}
+
+function VerifyLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -160,7 +169,7 @@ export default function VerifyLoginPage() {
         try {
           localStorage.removeItem(PENDING_LOGIN_EMAIL_KEY);
           localStorage.removeItem(PENDING_LOGIN_REMEMBER_KEY);
-        } catch {}
+        } catch { }
 
         router.push(data?.redirect || "/");
         return;
@@ -212,8 +221,8 @@ export default function VerifyLoginPage() {
     msg?.type === "error"
       ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-500/20"
       : msg?.type === "success"
-      ? "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-500/20"
-      : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-500/20";
+        ? "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-500/20"
+        : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-500/20";
 
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, "0");
   const ss = String(secondsLeft % 60).padStart(2, "0");
@@ -228,19 +237,19 @@ export default function VerifyLoginPage() {
         <div className="landing-noise" />
       </div>
 
-      <header className="site-header w-full border-b border-white/5 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
+      <header className="site-header sticky top-0 z-50 flex w-full items-center justify-between border-b border-slate-200/80 bg-white/65 px-6 py-4 backdrop-blur dark:border-white/5 dark:bg-transparent">
         <Link href="/" className="flex items-center gap-3">
-          <span className="w-8 h-8 rounded-full grid place-items-center border border-white/10 bg-white/5 overflow-hidden">
+          <span className="w-8 h-8 rounded-full grid place-items-center border border-slate-300 bg-white/80 shadow-sm overflow-hidden dark:border-white/10 dark:bg-white/5 dark:shadow-none">
             <Image src="/assets/icons/chick.png" alt="Logo" width={32} height={32} className="w-6 h-6 object-contain" priority />
           </span>
 
-          <h2 className="text-lg font-bold leading-tight tracking-tight">
-            Shadowing <span className="text-blue-400">&amp;</span> Dictation
+          <h2 className="text-lg font-bold leading-tight tracking-tight text-slate-950 dark:text-white">
+            Shadowing <span className="text-blue-600 dark:text-blue-400">&amp;</span> Dictation
           </h2>
         </Link>
 
         <div className="flex items-center gap-4 sm:gap-6">
-          <Link href="/help" className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-slate-400 hover:text-blue-400 transition-colors">
+          <Link href="/help" className="hidden sm:inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-slate-950 transition-colors dark:text-slate-400 dark:hover:text-blue-400">
             <HelpCircle className="w-4 h-4" />
             Trợ giúp
           </Link>
@@ -249,17 +258,17 @@ export default function VerifyLoginPage() {
       </header>
 
       <main className="flex-1 flex items-center justify-center px-4 py-12">
-        <div className="w-full max-w-[480px] rounded-2xl px-6 sm:px-10 py-10 glass-card shadow-xl">
+        <div className="w-full max-w-[480px] rounded-2xl border border-slate-200 bg-white/78 px-6 py-10 shadow-xl shadow-slate-300/35 sm:px-10 dark:border-white/10 dark:bg-transparent dark:shadow-xl glass-card">
           <div className="flex flex-col items-center text-center gap-4">
             <div className="flex items-center justify-center size-16 rounded-full bg-blue-500/10 ring-1 ring-blue-400/20 mb-2">
               <Image src="/assets/icons/lock.png" alt="Lock" width={36} height={36} className="w-9 h-9 object-contain select-none" />
             </div>
 
             <div className="space-y-2">
-              <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight">Xác thực đăng nhập</h1>
-              <p className="text-muted text-base leading-relaxed max-w-[360px] mx-auto">
+              <h1 className="text-2xl sm:text-[28px] font-bold tracking-tight text-slate-950 dark:text-white">Xác thực đăng nhập</h1>
+              <p className="text-slate-600 dark:text-muted text-base leading-relaxed max-w-[360px] mx-auto">
                 Nhập mã 6 chữ số đã gửi tới email{" "}
-                {email ? <span className="text-white/90 font-medium">{email}</span> : <span className="text-rose-300 font-medium">[chưa có email]</span>}
+                {email ? <span className="font-medium" style={{ color: 'var(--fg)' }}>{email}</span> : <span className="text-rose-300 font-medium">[chưa có email]</span>}
               </p>
             </div>
           </div>
@@ -315,10 +324,10 @@ export default function VerifyLoginPage() {
               <p className="text-muted text-sm">Chưa nhận được mã?</p>
 
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10">
-                <span className="text-sm font-medium text-muted tabular-nums">
+                <span className="text-sm font-medium text-slate-600 dark:text-muted tabular-nums">
                   {mm}:{ss}
                 </span>
-                <div className="w-px h-3.5 bg-white/15 mx-1" />
+                <div className="w-px h-3.5 bg-slate-300 dark:bg-white/15 mx-1" />
 
                 <button
                   type="button"
@@ -326,7 +335,7 @@ export default function VerifyLoginPage() {
                   disabled={secondsLeft > 0}
                   className={[
                     "text-sm font-semibold transition-colors",
-                    secondsLeft > 0 ? "text-slate-400 cursor-not-allowed" : "text-blue-400 hover:text-cyan-300",
+                    secondsLeft > 0 ? "text-slate-400 cursor-not-allowed" : "text-blue-700 hover:text-blue-800 dark:text-blue-400 dark:hover:text-cyan-300",
                   ].join(" ")}
                 >
                   Gửi lại mã
@@ -336,13 +345,13 @@ export default function VerifyLoginPage() {
 
             <div className="w-full h-px bg-white/10" />
 
-            <Link href="/login" className="text-sm font-medium text-slate-300 hover:text-blue-400 transition-colors">
+            <Link href="/login" className="text-sm font-medium text-slate-700 hover:text-slate-950 transition-colors dark:text-slate-300 dark:hover:text-blue-400">
               ← Quay lại đăng nhập
             </Link>
 
             <button
               type="button"
-              className="text-sm font-medium text-muted hover:text-blue-400 transition-colors"
+              className="text-sm font-medium text-slate-600 hover:text-slate-950 transition-colors dark:text-muted dark:hover:text-blue-400"
               onClick={() => showMessage("info", "Bạn có thể thêm phương thức xác thực khác sau.")}
             >
               Thử phương thức xác thực khác
@@ -352,7 +361,7 @@ export default function VerifyLoginPage() {
       </main>
 
       <footer className="py-6 text-center">
-        <p className="text-xs text-slate-500 dark:text-slate-600">© 2024 Shadowing &amp; Dictation. All rights reserved.</p>
+        <p className="text-xs text-slate-600 dark:text-slate-600">© 2024 Shadowing &amp; Dictation. All rights reserved.</p>
       </footer>
     </div>
   );

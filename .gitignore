@@ -9,6 +9,11 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+node_modules/
+.next/
+scratch/
+*.zip
+*.exe
 
 # testing
 /coverage
@@ -41,3 +46,10 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# Large media files - store separately (too large for GitHub)
+/public/videos/
+*.mp4
+*.mov
+*.avi
+*.mkv

@@ -1,65 +1,95 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import crypto from "crypto";
-import { sendEmail } from "@/lib/mailer";
+import { prisma } from '@/models/prisma';
+import { gen6DigitCode, hashCode } from '@/services/otp';
+import { sendEmail } from '@/services/mailer';
 
 export const runtime = "nodejs";
 
-function sha256(input: string) {
-  return crypto.createHash("sha256").update(input).digest("hex");
+const COOLDOWN_MS = 60_000;
+const OTP_TTL_MS = 10 * 60 * 1000;
+
+function isValidEmail(email: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""));
+}
+
+async function findUserByIdentifier(identifier: string) {
+  const normalized = String(identifier || "").trim();
+  if (!normalized) return null;
+
+  if (isValidEmail(normalized)) {
+    return prisma.user.findUnique({ where: { email: normalized.toLowerCase() } });
+  }
+
+  return prisma.user.findUnique({ where: { username: normalized } });
 }
 
 export async function POST(req: Request) {
   try {
     const body = await req.json().catch(() => ({}));
-    const email = String(body.email || "").trim().toLowerCase();
+    const identifier = String(body.identifier || body.email || "").trim();
 
-    if (!email) {
-      return NextResponse.json({ status: "error", message: "Vui lòng nhập email." }, { status: 400 });
+    if (!identifier) {
+      return NextResponse.json({ status: "error", message: "Vui lòng nhập email hoặc tên đăng nhập." }, { status: 400 });
     }
 
-    // ✅ luôn trả success để tránh lộ email có tồn tại hay không
-    const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
+    const user = await findUserByIdentifier(identifier);
+
+    // Luôn trả success để tránh lộ định danh có tồn tại hay không.
+    if (!user || !user.email || !user.emailVerifiedAt) {
       return NextResponse.json({
         status: "success",
-        message: "Nếu email tồn tại, hệ thống đã gửi link đặt lại mật khẩu.",
+        message: "Nếu tài khoản tồn tại, hệ thống đã gửi mã xác minh đặt lại mật khẩu.",
       });
     }
 
-    // xoá token reset cũ chưa dùng (tuỳ chọn)
+    const last = await prisma.token.findFirst({
+      where: { userId: user.id, type: "PASSWORD_RESET", usedAt: null },
+      orderBy: { sentAt: "desc" },
+      select: { sentAt: true },
+    });
+
+    if (last?.sentAt) {
+      const diff = Date.now() - new Date(last.sentAt).getTime();
+      if (diff < COOLDOWN_MS) {
+        const remain = Math.ceil((COOLDOWN_MS - diff) / 1000);
+        return NextResponse.json(
+          { status: "error", message: `Vui lòng đợi ${remain}s rồi hãy gửi lại mã.` },
+          { status: 429 }
+        );
+      }
+    }
+
     await prisma.token.updateMany({
       where: { userId: user.id, type: "PASSWORD_RESET", usedAt: null },
       data: { usedAt: new Date() },
     });
 
-    const rawToken = crypto.randomBytes(32).toString("hex"); // token thật
-    const tokenHash = sha256(rawToken); // lưu hash
+    const code = gen6DigitCode();
+    const codeHash = await hashCode(code);
 
     await prisma.token.create({
       data: {
         type: "PASSWORD_RESET",
-        codeHash: tokenHash,
+        codeHash,
         userId: user.id,
-        expiresAt: new Date(Date.now() + 30 * 60 * 1000), // 30 phút
+        expiresAt: new Date(Date.now() + OTP_TTL_MS),
       },
     });
 
-    const baseUrl = process.env.APP_URL || "http://localhost:3000";
-    const resetLink = `${baseUrl}/reset-password?token=${encodeURIComponent(rawToken)}&email=${encodeURIComponent(email)}`;
-
     const html = `
-      Xin chào ${user.username},<br><br>
-      Bạn đã yêu cầu đặt lại mật khẩu. Bấm vào link dưới đây để tạo mật khẩu mới:<br>
-      <a href="${resetLink}">${resetLink}</a><br><br>
-      Link sẽ hết hạn sau 30 phút. Nếu bạn không yêu cầu, hãy bỏ qua email này.
+      Xin chào ${user.username || user.email},<br><br>
+      Bạn đã yêu cầu đặt lại mật khẩu.<br>
+      Mã xác minh của bạn là: <b style="font-size: 24px; letter-spacing: 2px;">${code}</b><br><br>
+      Mã này sẽ hết hạn sau <b>10 phút</b>.<br>
+      Hãy quay lại trang đặt lại mật khẩu để nhập mã và tạo mật khẩu mới.<br><br>
+      Nếu bạn không yêu cầu, hãy bỏ qua email này.
     `;
 
     await sendEmail(user.email, "Đặt lại mật khẩu", html);
 
     return NextResponse.json({
       status: "success",
-      message: "Nếu email tồn tại, hệ thống đã gửi link đặt lại mật khẩu.",
+      message: "Nếu tài khoản tồn tại, hệ thống đã gửi mã xác minh đặt lại mật khẩu.",
     });
   } catch (err) {
     console.error(err);

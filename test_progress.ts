@@ -1,28 +1,39 @@
-import { prisma } from './src/lib/prisma'; // adjusting path if needed
+import { CefrLevel } from "@prisma/client";
+import { prisma } from "./src/models/prisma";
+
+const LEVEL_ORDER: Record<CefrLevel, number> = {
+    PRE_A1: 0,
+    A1: 1,
+    A2: 2,
+    B1: 3,
+    B2: 4,
+    C1: 5,
+    C2: 6,
+};
 
 async function main() {
     try {
-        const levelId = 'a2';
-        const topicId = '1';
+        const levelId: CefrLevel = "A2";
+        const topicId = "1";
 
         console.log("Finding level");
         let level = await prisma.level.findUnique({
-            where: { code: levelId.toUpperCase() as any }
+            where: { code: levelId }
         });
 
         if (!level) {
             console.log("Creating level");
             level = await prisma.level.create({
                 data: {
-                    code: levelId.toUpperCase() as any,
-                    name: `Level ${levelId.toUpperCase()}`,
-                    order: levelId === 'A1' ? 1 : levelId === 'A2' ? 2 : levelId === 'B1' ? 3 : 4,
+                    code: levelId,
+                    name: `Level ${levelId}`,
+                    order: LEVEL_ORDER[levelId] || 1,
                     description: `Automatically created level for ${levelId}`,
                     recommendedMinPerLesson: 15
                 }
             });
         }
-        
+
         console.log("Level OK:", level.id);
 
         let lesson = await prisma.lesson.findFirst({
@@ -69,8 +80,8 @@ async function main() {
             });
         }
         console.log("Exercise OK:", exercise.id);
-        
-    } catch (e) {
+
+    } catch (e: unknown) {
         console.error("ERROR CAUGHT:");
         console.error(e);
     } finally {

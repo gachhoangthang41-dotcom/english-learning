@@ -2,6 +2,10 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+type DictionaryApiPhonetic = {
+  text?: string
+}
+
 async function main() {
   console.log('Fetching saved words...')
   const words = await prisma.learningProgress.findMany({
@@ -27,8 +31,8 @@ async function main() {
           
           const phonetics = data[0]?.phonetics
           if (!pronunciation && phonetics && phonetics.length > 0) {
-            const validPhonetic = phonetics.find((p: any) => p.text)
-            if (validPhonetic) pronunciation = validPhonetic.text
+            const validPhonetic = (phonetics as DictionaryApiPhonetic[]).find((phonetic) => phonetic.text)
+            if (validPhonetic?.text) pronunciation = validPhonetic.text
           }
           
           const meanings = data[0]?.meanings

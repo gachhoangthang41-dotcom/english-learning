@@ -69,13 +69,13 @@ export async function POST(request: NextRequest) {
 
         const normalizedLevelId = upperLevelId as ValidLevelId;
         let level = await prisma.level.findUnique({
-            where: { code: normalizedLevelId as any }
+            where: { code: normalizedLevelId }
         });
 
         if (!level) {
             level = await prisma.level.create({
                 data: {
-                    code: normalizedLevelId as any,
+                    code: normalizedLevelId,
                     name: `Level ${normalizedLevelId}`,
                     order: LEVEL_ORDER[normalizedLevelId],
                     description: `Automatically created level for ${normalizedLevelId}`,
@@ -166,12 +166,12 @@ export async function POST(request: NextRequest) {
             },
             { status: 200 }
         );
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("[API /learning/progress] Error:", error);
         return NextResponse.json(
             {
                 status: "error",
-                message: error.message || "Internal server error"
+                message: error instanceof Error ? error.message : "Internal server error"
             },
             { status: 500 }
         );

@@ -171,6 +171,11 @@ function VerifyLoginContent() {
           localStorage.removeItem(PENDING_LOGIN_REMEMBER_KEY);
         } catch { }
 
+        try {
+          // notify other components in this window/tab that auth state changed
+          window.dispatchEvent(new CustomEvent("auth-changed", { detail: { source: "verify-login" } }));
+        } catch {}
+
         router.push(data?.redirect || "/");
         return;
       }

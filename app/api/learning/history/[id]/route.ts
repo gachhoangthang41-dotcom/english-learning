@@ -50,8 +50,14 @@ export async function DELETE(
 
         return NextResponse.json({ status: "success", message: "Deleted successfully" }, { status: 200 });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(`[API /learning/history] Error:`, error);
-        return NextResponse.json({ status: "error", message: error.message || "Internal server error" }, { status: 500 });
+        return NextResponse.json(
+            {
+                status: "error",
+                message: error instanceof Error ? error.message : "Internal server error"
+            },
+            { status: 500 }
+        );
     }
 }

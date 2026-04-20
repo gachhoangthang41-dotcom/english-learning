@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { prisma } from '@/models/prisma';
 import { cookies } from "next/headers";
 import { jwtVerify } from "jose";
@@ -23,7 +23,7 @@ async function getUserIdFromSession() {
     }
 }
 
-export async function GET(req: NextRequest) {
+export async function GET() {
     try {
         const userId = await getUserIdFromSession();
         if (!userId) {

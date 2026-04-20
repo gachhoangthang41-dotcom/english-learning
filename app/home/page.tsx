@@ -22,11 +22,9 @@ import {
   Flame,
   Timer,
   TrendingUp,
-  Newspaper,
   Mic2,
   Signal,
   History,
-  Sparkles,
 } from "lucide-react";
 import { ThemeToggle } from '@/views/components/theme-toggle';
 import Flashcards from '@/views/components/Flashcards';
@@ -156,7 +154,7 @@ export default function HomePage() {
     return () => {
       alive = false;
     };
-  }, [router]);
+  }, [router, t]);
 
   React.useEffect(() => {
     let alive = true;
@@ -215,6 +213,10 @@ export default function HomePage() {
         setMsg({ type: "error", text: data?.message || `HTTP ${res.status}` });
         return;
       }
+
+      try {
+        window.dispatchEvent(new CustomEvent("auth-changed", { detail: { source: "logout" } }));
+      } catch {}
 
       router.replace("/login");
     } catch (e) {

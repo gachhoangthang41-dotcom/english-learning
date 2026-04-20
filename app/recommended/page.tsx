@@ -13,7 +13,7 @@ type RecommendedItem = {
 };
 
 export default function RecommendedPage() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const items: RecommendedItem[] = [
     { tag: t("shadowing"), title: t("recommendedBusinessTitle"), time: `15 ${t("minutes")}`, level: "B2", href: "/practice/shadowing" },
     { tag: t("dictation"), title: t("recommendedNewsTitle"), time: `10 ${t("minutes")}`, level: "A1 A2", href: "/learn/a1/1/dictation" },

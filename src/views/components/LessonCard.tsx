@@ -1,6 +1,6 @@
 import Link from "next/link"; 
 
-function LessonCard({
+export default function LessonCard({
   level,
   time,
   title,

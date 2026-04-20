@@ -24,9 +24,9 @@ async function main() {
         const result = await chat.sendMessage("công thức thì hiện tại hoàn thành");
         console.log("Response:", result.response.text());
 
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("ERROR CAUGHT:");
-        console.error(e?.message || e);
+        console.error(e instanceof Error ? e.message : e);
     }
 }
 main();

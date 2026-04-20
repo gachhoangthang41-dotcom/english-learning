@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import Groq from "groq-sdk";
 
 type ClozeItem = {
   id: string;
@@ -13,9 +12,49 @@ type GroqClozeResponse = {
   items: ClozeItem[];
 };
 
+type GroqMessage = {
+  role: "system" | "user";
+  content: string;
+};
+
+type GroqChatResponse = {
+  choices?: Array<{
+    message?: {
+      content?: string | null;
+    };
+  }>;
+};
+
 function getErrorMessage(err: unknown) {
   if (err instanceof Error) return err.message;
   return String(err);
+}
+
+async function createGroqCompletion(messages: GroqMessage[], model: string, temperature: number) {
+  const apiKey = process.env.GROQ_API_KEY;
+  if (!apiKey) {
+    throw new Error("Missing GROQ_API_KEY in .env");
+  }
+
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model,
+      temperature,
+      messages,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Groq API error (${response.status}): ${errorText}`);
+  }
+
+  return (await response.json()) as GroqChatResponse;
 }
 
 // ✅ tách câu đơn giản nhưng hiệu quả cho transcript phổ thông
@@ -130,7 +169,6 @@ async function generateSingleQuestion(segmentIndex: number, segmentText: string)
     current.length > longest.length ? current : longest
   );
 
-  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
   const model = "llama-3.3-70b-versatile";
 
   const system = `
@@ -158,14 +196,14 @@ STRICT RULES:
   const user = `Sentence: ${targetSentence}`;
 
   try {
-    const completion = await groq.chat.completions.create({
-      model,
-      temperature: 0.15,
-      messages: [
+    const completion = await createGroqCompletion(
+      [
         { role: "system", content: system },
         { role: "user", content: user },
       ],
-    });
+      model,
+      0.15
+    );
 
     const content = completion.choices?.[0]?.message?.content ?? "";
 
@@ -191,7 +229,7 @@ STRICT RULES:
     // Fallback nếu Groq fail
     const fallbackItem = fallbackCloze(targetSentence, String(segmentIndex + 1));
     return NextResponse.json({ item: fallbackItem, segmentIndex });
-  } catch (err) {
+  } catch {
     // Fallback nếu API call fail
     const fallbackItem = fallbackCloze(targetSentence, String(segmentIndex + 1));
     return NextResponse.json({ item: fallbackItem, segmentIndex });
@@ -216,7 +254,6 @@ async function generateAllQuestions(transcript: string) {
     );
   }
 
-  const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
   const model = "llama-3.3-70b-versatile";
 
   const N = sentences.length;
@@ -253,14 +290,14 @@ STRICT RULES:
 
   const user = `Sentences (${N}):\n${numbered}`;
 
-  const completion = await groq.chat.completions.create({
-    model,
-    temperature: 0.15,
-    messages: [
+  const completion = await createGroqCompletion(
+    [
       { role: "system", content: system },
       { role: "user", content: user },
     ],
-  });
+    model,
+    0.15
+  );
 
   const content = completion.choices?.[0]?.message?.content ?? "";
 

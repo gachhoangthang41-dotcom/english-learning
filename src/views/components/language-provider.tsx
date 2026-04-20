@@ -16,22 +16,23 @@ const LanguageContext = createContext<LanguageContextType>({
 });
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("vi");
-  const [mounted, setMounted] = useState(false);
+  const [language, setLanguageState] = useState<Language>(() => {
+    if (typeof window === "undefined") {
+      return "vi";
+    }
+
+    const saved = localStorage.getItem("NEXT_LOCALE");
+    return saved === "vi" || saved === "en" ? saved : "vi";
+  });
 
   useEffect(() => {
-    setMounted(true);
-    const saved = localStorage.getItem("NEXT_LOCALE") as Language;
-    if (saved && (saved === "vi" || saved === "en")) {
-      setLanguageState(saved);
-    }
-  }, []);
+    document.documentElement.lang = language;
+  }, [language]);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     localStorage.setItem("NEXT_LOCALE", lang);
     document.cookie = `NEXT_LOCALE=${lang}; path=/; max-age=31536000`;
-    document.documentElement.lang = lang;
   };
 
   const t = (key: DictionaryKey): string => {

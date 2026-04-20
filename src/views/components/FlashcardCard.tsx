@@ -71,11 +71,85 @@ export default function FlashcardCard({
     );
   };
 
-  const playAudio = (e: React.MouseEvent) => {
+  const playAudio = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = "en-US";
-    window.speechSynthesis.speak(utterance);
+
+    try {
+      console.debug("[playAudio] requesting pronunciation for:", word);
+      const res = await fetch(`/api/pronunciation?text=${encodeURIComponent(word)}`);
+      console.debug("[playAudio] /api/pronunciation status:", res.status);
+
+      if (res.ok) {
+        const contentType = (res.headers.get("content-type") || "").toLowerCase();
+        console.debug("[playAudio] content-type:", contentType);
+
+        if (contentType.startsWith("audio/") || contentType === "application/octet-stream") {
+          const blob = await res.blob();
+          console.debug("[playAudio] blob size:", blob.size, "type:", blob.type);
+
+          if (!blob.size || blob.size < 200) {
+            console.warn("[playAudio] audio blob empty or too small, falling back to TTS");
+            throw new Error("empty-audio-blob");
+          }
+
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio();
+          audio.src = url;
+          audio.preload = "auto";
+
+          audio.addEventListener("error", () => {
+            console.error("[playAudio] audio element error:", audio.error);
+          });
+
+          try {
+            await audio.play();
+            // revoke after playback ends or after timeout
+            audio.addEventListener("ended", () => URL.revokeObjectURL(url));
+            setTimeout(() => URL.revokeObjectURL(url), 30000);
+            return;
+          } catch (err) {
+            console.error("[playAudio] audio.play() failed:", err);
+            throw err;
+          }
+        }
+
+        // not an audio binary -> try parse JSON for a URL
+        let json: any = null;
+        try {
+          json = await res.json();
+        } catch (e) {
+          const txt = await res.text().catch(() => "");
+          console.debug("[playAudio] non-json response text:", txt);
+          json = { text: txt };
+        }
+
+        console.debug("[playAudio] upstream JSON:", json);
+        const audioUrl = json?.data?.url || json?.url || null;
+        if (audioUrl) {
+          try {
+            const audio = new Audio(audioUrl);
+            await audio.play();
+            return;
+          } catch (err) {
+            console.error("[playAudio] playing upstream audioUrl failed:", err);
+          }
+        }
+      } else {
+        console.warn("[playAudio] /api/pronunciation returned non-ok status", res.status);
+      }
+    } catch (err) {
+      console.error("[playAudio] pronunciation flow error:", err);
+    }
+
+    // final fallback: browser TTS
+    try {
+      console.debug("[playAudio] falling back to SpeechSynthesis for:", word);
+      const utterance = new SpeechSynthesisUtterance(word);
+      utterance.lang = "en-US";
+      window.speechSynthesis.speak(utterance);
+    } catch (err) {
+      console.error("[playAudio] SpeechSynthesis fallback failed:", err);
+    }
   };
 
   return (

@@ -175,6 +175,21 @@ model LearningProgress {
   @@index([userId, level])
 }
 
+model AiFeedback {
+  id                String   @id @default(cuid())
+  userId            String?  // nullable if anonymous
+  sessionId         String?
+  messageId         String
+  assistantContent  String
+  previousUserInput String?
+  feedbackType      String
+  createdAt         DateTime @default(now())
+
+  @@index([userId])
+  @@index([sessionId])
+  @@index([messageId])
+}
+
 enum TokenType {
   EMAIL_VERIFY
   LOGIN_2FA

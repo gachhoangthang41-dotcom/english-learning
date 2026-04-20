@@ -3,8 +3,20 @@ import { prisma } from '@/models/prisma';
 import { cookies } from "next/headers";
 import { verifySession, SESSION_COOKIE_NAME } from '@/controllers/session';
 import bcrypt from "bcryptjs";
+import type { Prisma } from "@prisma/client";
 
 export const runtime = "nodejs";
+
+function getErrorCode(error: unknown): string | null {
+  if (typeof error === "object" && error !== null && "code" in error) {
+    const code = (error as { code?: unknown }).code;
+    if (typeof code === "string") {
+      return code;
+    }
+  }
+
+  return null;
+}
 
 function isValidEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -51,7 +63,7 @@ export async function POST(req: Request) {
     }
 
     // 4) Build update data (update 1 lần)
-    const dataToUpdate: Record<string, any> = {};
+    const dataToUpdate: Prisma.UserUpdateInput = {};
 
     // ✅ Update "biệt danh" -> displayName (KHÔNG đụng username)
     if (displayName) {
@@ -122,11 +134,11 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ status: "success", message: "Cập nhật thành công!" });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(err);
 
     // Prisma unique error fallback
-    if (err?.code === "P2002") {
+    if (getErrorCode(err) === "P2002") {
       return NextResponse.json(
         { status: "error", message: "Dữ liệu bị trùng (email đã tồn tại)." },
         { status: 400 }

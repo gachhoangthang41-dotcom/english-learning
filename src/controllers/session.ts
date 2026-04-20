@@ -46,9 +46,15 @@ export async function verifySession(token: string): Promise<SessionPayload> {
   const { payload } = await jwtVerify(token, secret);
 
   // ✅ normalize + validate tối thiểu
-  const userId = String((payload as any)?.userId || "");
-  const username = String((payload as any)?.username || "");
-  const role = String((payload as any)?.role || "user");
+  const payloadObject = payload as {
+    userId?: unknown;
+    username?: unknown;
+    role?: unknown;
+  };
+
+  const userId = String(payloadObject.userId || "");
+  const username = String(payloadObject.username || "");
+  const role = String(payloadObject.role || "user");
 
   if (!userId) throw new Error("Invalid session: missing userId");
 

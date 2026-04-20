@@ -7,7 +7,6 @@ import {
     Settings,
     Play,
     Pause,
-    RotateCcw,
     Mic,
     Volume2,
     Edit3,
@@ -25,6 +24,30 @@ type Segment = {
     text: string;           // English
     translation: string;    // Vietnamese
 };
+
+type VideoSize = "Small" | "Medium" | "Large";
+
+type SpeechRecognitionResultEvent = {
+    results: ArrayLike<ArrayLike<{ transcript: string }>>;
+};
+
+type SpeechRecognitionErrorEvent = {
+    error?: string;
+};
+
+type BrowserSpeechRecognition = {
+    lang: string;
+    interimResults: boolean;
+    maxAlternatives: number;
+    onstart: (() => void) | null;
+    onresult: ((event: SpeechRecognitionResultEvent) => void) | null;
+    onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+    onspeechend: (() => void) | null;
+    start: () => void;
+    stop: () => void;
+};
+
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
 
 const SEGMENT_EPSILON = 0.05;
 
@@ -125,7 +148,7 @@ export default function DictationPage() {
 
     // --- STATE ---
     const [isVideoHidden, setIsVideoHidden] = useState(false);
-    const [videoSize, setVideoSize] = useState<"Small" | "Medium" | "Large">("Large");
+    const [videoSize, setVideoSize] = useState<VideoSize>("Large");
     const videoRef = useRef<HTMLVideoElement>(null);
     const playbackStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -205,6 +228,9 @@ export default function DictationPage() {
     const [isRecording, setIsRecording] = useState(false);
     const [transcript, setTranscript] = useState("");
     const [recognitionError, setRecognitionError] = useState("");
+    const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+    const mediaStreamRef = useRef<MediaStream | null>(null);
+    const [pronunciationResult, setPronunciationResult] = useState<any | null>(null);
 
     // --- FETCH DATA ---
     useEffect(() => {
@@ -253,7 +279,7 @@ export default function DictationPage() {
         setIsTextRevealed(false); // Reset reveal state on new segment
         setTranscript("");
         setRecognitionError("");
-    }, [currentSegIndex, currentSegment?.text]);
+    }, [currentSegIndex, currentSegment]);
 
     const handleNext = () => {
         if (currentSegIndex < segments.length - 1) {
@@ -263,18 +289,6 @@ export default function DictationPage() {
             if (videoRef.current) {
                 videoRef.current.pause();
                 videoRef.current.currentTime = segments[nextIndex].startTime + SEGMENT_EPSILON;
-            }
-        }
-    };
-
-    const handlePrev = () => {
-        if (currentSegIndex > 0) {
-            const prevIndex = currentSegIndex - 1;
-            setCurrentSegIndex(prevIndex);
-            clearPlaybackStopTimer();
-            if (videoRef.current) {
-                videoRef.current.pause();
-                videoRef.current.currentTime = segments[prevIndex].startTime + SEGMENT_EPSILON;
             }
         }
     };
@@ -347,8 +361,21 @@ export default function DictationPage() {
         });
     };
 
-    const startRecording = () => {
-        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    function blobToDataUrl(blob: Blob): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(String(reader.result));
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    const startSpeechRecognition = () => {
+        const windowWithSpeech = window as Window & {
+            SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+            webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+        };
+        const SpeechRecognition = windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition;
 
         if (!SpeechRecognition) {
             setRecognitionError(copy.unsupportedBrowser);
@@ -365,24 +392,24 @@ export default function DictationPage() {
             setIsRecording(true);
             setRecognitionError("");
             setTranscript("");
+            setPronunciationResult(null);
         };
 
-        recognition.onresult = (event: any) => {
+        recognition.onresult = (event: SpeechRecognitionResultEvent) => {
             const speechResult = event.results[0][0].transcript;
             setTranscript(speechResult);
 
             if (currentSegment) {
-                // Remove punctuation and lowercase for comparison
                 const cleanResult = speechResult.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").toLowerCase().trim();
                 const cleanTarget = currentSegment.text.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").toLowerCase().trim();
 
                 if (cleanResult === cleanTarget || cleanTarget.includes(cleanResult)) {
-                    setIsTextRevealed(true); // Correct!
+                    setIsTextRevealed(true);
                 }
             }
         };
 
-        recognition.onerror = (event: any) => {
+        recognition.onerror = () => {
             setIsRecording(false);
             setRecognitionError(copy.recognitionError);
         };
@@ -393,6 +420,120 @@ export default function DictationPage() {
         };
 
         recognition.start();
+    };
+
+    const startRecording = async () => {
+        setRecognitionError("");
+        setPronunciationResult(null);
+
+        // If already recording via MediaRecorder, stop it
+        if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+            return;
+        }
+
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaStreamRef.current = stream;
+
+                const defaultMime = 'audio/webm';
+                let mime = defaultMime;
+                try {
+                    if (typeof (MediaRecorder as any).isTypeSupported === 'function') {
+                        const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/wav'];
+                        for (const c of candidates) {
+                            if ((MediaRecorder as any).isTypeSupported(c)) {
+                                mime = c;
+                                break;
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // ignore
+                }
+
+                const options: any = {};
+                if ((MediaRecorder as any).isTypeSupported && (MediaRecorder as any).isTypeSupported(mime)) options.mimeType = mime;
+
+                const recorder = new MediaRecorder(stream, options);
+                const chunks: Blob[] = [];
+
+                recorder.ondataavailable = (ev: BlobEvent) => {
+                    if (ev.data && ev.data.size) chunks.push(ev.data);
+                };
+
+                recorder.onstart = () => {
+                    setIsRecording(true);
+                    setTranscript("");
+                    setRecognitionError("");
+                    setPronunciationResult(null);
+                };
+
+                recorder.onstop = async () => {
+                    setIsRecording(false);
+                    try {
+                        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+                        const dataUrl = await blobToDataUrl(blob);
+                        const base64 = dataUrl.split(',')[1] || '';
+
+                        // send to server for assessment
+                        const payload = {
+                            audioBase64: base64,
+                            mimeType: blob.type || 'audio/webm',
+                            filename: 'record.webm',
+                            reference: currentSegment?.text || ''
+                        };
+
+                        const res = await fetch('/api/pronunciation/check', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload),
+                            cache: 'no-store',
+                        });
+
+                        const data = await res.json().catch(() => null);
+                        if (res.ok && data?.status === 'success') {
+                            setPronunciationResult(data.result || data.data || data);
+                            // if upstream provides score, reveal text on high score
+                            const score = Number(data.result?.score ?? data.result?.confidence ?? data?.data?.score ?? NaN);
+                            if (!Number.isNaN(score) && score >= 0.75) {
+                                setIsTextRevealed(true);
+                            }
+                        } else {
+                            console.warn('/api/pronunciation/check failed', data);
+                            setRecognitionError(data?.message || 'Lỗi kiểm tra phát âm');
+                        }
+                    } catch (err) {
+                        console.error('Pronunciation check error:', err);
+                        setRecognitionError(copy.recognitionError);
+                    } finally {
+                        // stop tracks
+                        try {
+                            mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+                        } catch {}
+                        mediaStreamRef.current = null;
+                        mediaRecorderRef.current = null;
+                    }
+                };
+
+                recorder.start();
+                mediaRecorderRef.current = recorder;
+
+                // auto-stop after a reasonable duration (10s) to avoid cutting user off too early
+                setTimeout(() => {
+                    try {
+                        if (recorder.state === 'recording') recorder.stop();
+                    } catch (e) {}
+                }, 10000);
+            } catch (err) {
+                console.error('MediaRecorder error:', err);
+                startSpeechRecognition();
+            }
+        } else {
+            // fallback to SpeechRecognition
+            startSpeechRecognition();
+        }
     };
 
     if (isLoading) {
@@ -492,7 +633,7 @@ export default function DictationPage() {
                             <select
                                 className="rounded border border-slate-300 bg-white px-2 py-1 text-sm text-slate-900 outline-none dark:border-border dark:bg-background dark:text-foreground"
                                 value={videoSize}
-                                onChange={(e) => setVideoSize(e.target.value as any)}
+                                onChange={(e) => setVideoSize(e.target.value as VideoSize)}
                             >
                                 <option value="Small">Small</option>
                                 <option value="Medium">Medium</option>
@@ -613,12 +754,25 @@ export default function DictationPage() {
                                 )}
 
                                 {transcript && !isTextRevealed && (
-                                     <p className="text-sm text-rose-400 mt-2">
-                                         {copy.youSaid} "{transcript}". {copy.notMatch}
+                                 <p className="text-sm text-rose-400 mt-2">
+                                         {copy.youSaid} &quot;{transcript}&quot;. {copy.notMatch}
                                      </p>
                                 )}
                                 {recognitionError && (
                                     <p className="text-sm text-rose-400 mt-2">{recognitionError}</p>
+                                )}
+                                {pronunciationResult && (
+                                    <div className="mt-3 rounded-md border border-slate-200 bg-slate-50 p-3 text-sm text-foreground dark:border-border dark:bg-card">
+                                        <div className="font-semibold mb-1">Kết quả kiểm tra phát âm</div>
+                                        <div>Điểm: {typeof pronunciationResult?.score !== 'undefined' ? String(pronunciationResult.score) : (pronunciationResult?.confidence ?? '—')}</div>
+                                        {pronunciationResult?.feedback && (
+                                            <div className="mt-1 text-sm text-muted-foreground">
+                                                {typeof pronunciationResult.feedback === 'string'
+                                                    ? pronunciationResult.feedback
+                                                    : (pronunciationResult.feedback?.message ?? JSON.stringify(pronunciationResult.feedback))}
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
                             </div>
 
@@ -631,7 +785,6 @@ export default function DictationPage() {
                                 </button>
                                 <button 
                                     onClick={startRecording}
-                                    disabled={isRecording}
                                     className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition border
                                         ${isRecording 
                                             ? 'bg-rose-100 border-rose-300 text-rose-700 animate-pulse dark:bg-rose-500/30 dark:border-rose-500/50 dark:text-rose-300' 

@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
                 const phonetics = data[0]?.phonetics;
                 if (phonetics && phonetics.length > 0) {
                     const validPhonetic = (phonetics as DictionaryApiPhonetic[]).find((phonetic) => phonetic.text);
-                    if (validPhonetic) pronunciation = validPhonetic.text;
+                    if (validPhonetic) pronunciation = validPhonetic.text ?? null;
                 }
                 
                 // Lấy loại từ và dịch sang tiếng Việt

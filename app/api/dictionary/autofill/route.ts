@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 
+type DictionaryApiPhonetic = {
+    text?: string;
+};
+
 const posMap: Record<string, string> = {
     "noun": "danh từ",
     "verb": "động từ",
@@ -45,8 +49,8 @@ export async function GET(req: NextRequest) {
             // Lấy phiên âm
             const phonetics = data[0]?.phonetics;
             if (phonetics && phonetics.length > 0) {
-                const validPhonetic = phonetics.find((p: any) => p.text);
-                if (validPhonetic) pronunciation = validPhonetic.text;
+                const validPhonetic = (phonetics as DictionaryApiPhonetic[]).find((phonetic) => phonetic.text);
+                if (validPhonetic?.text) pronunciation = validPhonetic.text;
             }
             
             // Lấy loại từ

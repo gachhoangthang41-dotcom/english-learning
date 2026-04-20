@@ -131,8 +131,6 @@ export function FloatingAiChat() {
 
     setFeedbackByMessageId((prev) => ({ ...prev, [messageId]: feedback }));
 
-    if (feedback !== "unclear") return;
-
     const targetMessage = messages.find((msg) => msg.id === messageId && msg.role === "assistant");
     if (!targetMessage) return;
 
@@ -142,40 +140,59 @@ export function FloatingAiChat() {
       .reverse()
       .find((msg) => msg.role === "user");
 
+    // Send feedback to server for both helpful and unclear
     setIsLoading(true);
-    setClarifyingMessageId(messageId);
-
-    const followUpMessage: Message = {
-      id: `clarify-${messageId}`,
-      role: "user",
-      content:
-        `Người học A1-A2 chưa hiểu câu trả lời này. Hãy giải thích lại thật đơn giản bằng tiếng Việt, chia ý ngắn gọn, thêm 2 ví dụ rất dễ hiểu và kết thúc bằng 1 câu hỏi ngắn để kiểm tra người học. Câu hỏi ban đầu của người học: ${previousUserMessage?.content || "Không có"}. Câu trả lời cần làm rõ: ${targetMessage.content}`,
-    };
-
     try {
-      const responseText = await requestAiResponse([followUpMessage]);
+      // try to get logged-in user id
+      let userId: string | null = null;
+      try {
+        const meRes = await fetch("/api/me");
+        if (meRes.ok) {
+          const meData = await meRes.json().catch(() => null);
+          userId = meData?.status === "success" && meData?.user?.id ? meData.user.id : null;
+        }
+      } catch (e) {
+        // ignore
+      }
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: responseText,
+      const payload = {
+        query: previousUserMessage?.content || "",
+        response: targetMessage.content,
+        liked: feedback === "helpful",
+        // legacy fields for server compatibility
+        messageId,
+        assistantContent: targetMessage.content,
+        previousUserInput: previousUserMessage?.content || null,
+        sessionId: getSessionId(),
+        user_id: userId,
+        feedback_type: "explicit_command",
+        command: feedback === "helpful" ? "like" : "dislike",
+        correction: null,
+        metadata: {
+          message_id: messageId,
+          session_id: getSessionId(),
+          intent: null,
+          source: "AI_TUTOR",
         },
-      ]);
-    } catch (error) {
-      console.error("AI Clarification Error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: (Date.now() + 1).toString(),
-          role: "assistant",
-          content: "❌ Mình chưa thể giải thích thêm lúc này. Bạn hãy thử lại sau một chút.",
-        },
-      ]);
+        timestamp: new Date().toISOString(),
+      } as const;
+
+      const resp = await fetch("/api/ai-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await resp.json().catch(() => null);
+      console.log("/api/ai-feedback response:", json);
+    } catch (err) {
+      console.error("Failed to send AI feedback:", err);
     } finally {
-      setClarifyingMessageId(null);
       setIsLoading(false);
+    }
+
+    // If feedback is 'unclear' (i.e. 'Không hữu ích'), do NOT request clarification and return early
+    if (feedback === "unclear") {
+      return;
     }
   };
 
@@ -269,7 +286,7 @@ export function FloatingAiChat() {
                               : "border-slate-300 bg-white text-slate-600 hover:border-amber-400 hover:text-amber-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                           } ${isLoading ? "cursor-not-allowed opacity-60" : ""}`}
                         >
-                          {clarifyingMessageId === msg.id ? "Đang giải thích thêm..." : "Chưa rõ"}
+                          Không hữu ích
                         </button>
                       </div>
                     </div>

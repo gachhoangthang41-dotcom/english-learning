@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, RotateCcw, Loader2, Calendar, CheckCircle2, Clock, PlayCircle } from "lucide-react";
+import { ChevronLeft, RotateCcw, Loader2, Calendar, Clock, PlayCircle } from "lucide-react";
 import { format } from "date-fns";
 import { vi } from "date-fns/locale";
 

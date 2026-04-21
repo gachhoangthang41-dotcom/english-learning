@@ -44,6 +44,16 @@ export function FloatingAiChat() {
   const [clarifyingMessageId, setClarifyingMessageId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<number | null>(null);
+  const latestMessagesRef = useRef(messages);
+  const isLoadingRef = useRef(isLoading);
+
+  useEffect(() => {
+    latestMessagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    isLoadingRef.current = isLoading;
+  }, [isLoading]);
 
   const getSessionId = () => {
     const storageKey = "ai_tutor_session_id";
@@ -146,6 +156,22 @@ export function FloatingAiChat() {
 
   const toggleChat = () => setIsOpen((prev) => !prev);
 
+  useEffect(() => {
+    const handleOpenWithQuery = (e: Event) => {
+      const customEvent = e as CustomEvent<{ query: string, autoSend?: boolean }>;
+      setIsOpen(true);
+      if (customEvent.detail.autoSend) {
+          if (!isLoadingRef.current) {
+              submitMessage(customEvent.detail.query);
+          }
+      } else {
+          setInput(customEvent.detail.query);
+      }
+    };
+    window.addEventListener("open-ai-chat-with-query", handleOpenWithQuery as EventListener);
+    return () => window.removeEventListener("open-ai-chat-with-query", handleOpenWithQuery as EventListener);
+  }, []);
+
   const requestAiResponse = async (messageHistory: Message[]) => {
     try {
       const res = await fetch("/api/ai-assistant", {
@@ -182,17 +208,16 @@ export function FloatingAiChat() {
     }
   };
 
-  const sendMessage = async (e?: React.FormEvent) => {
-    e?.preventDefault();
-    if (!input.trim() || isLoading) return;
+  const submitMessage = async (text: string) => {
+    if (!text.trim() || isLoadingRef.current) return;
 
-    const userMessage = input.trim();
+    const userMessage = text.trim();
     setInput("");
 
     // Thêm tin nhắn user vào list
     const newUserMsg: Message = { id: Date.now().toString(), role: "user", content: userMessage };
-    const nextMessages = [...messages, newUserMsg];
-    setMessages((prev) => [...prev, newUserMsg]);
+    const nextMessages = [...latestMessagesRef.current, newUserMsg];
+    setMessages(nextMessages);
     setIsLoading(true);
 
     try {
@@ -219,6 +244,11 @@ export function FloatingAiChat() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const sendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    submitMessage(input);
   };
 
   const handleFeedback = async (messageId: string, feedback: FeedbackType) => {

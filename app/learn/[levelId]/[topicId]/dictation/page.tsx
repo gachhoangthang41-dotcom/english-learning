@@ -11,7 +11,8 @@ import {
     Volume2,
     Edit3,
     MoreHorizontal,
-    Eye
+    Eye,
+    Sparkles
 } from "lucide-react";
 import { useLanguage } from '@/views/components/language-provider';
 import { LESSONS_BY_LEVEL } from '@/models/data/a1-lessons';
@@ -74,6 +75,7 @@ export default function DictationPage() {
             vocabLevel: "Vocab level",
             fillPractice: "Fill-in-the-blanks practice",
             check: "Check",
+            aiExplain: "AI Explain",
             replaySentence: "Replay this sentence",
             next: "Next",
             translationLabel: "Vietnamese translation for:",
@@ -106,6 +108,7 @@ export default function DictationPage() {
             vocabLevel: "Mức từ vựng",
             fillPractice: "Luyện đục lỗ",
             check: "Kiểm tra",
+            aiExplain: "Giải thích AI",
             replaySentence: "Nghe lại câu này",
             next: "Tiếp",
             translationLabel: "Bản dịch tiếng Việt cho:",
@@ -156,7 +159,7 @@ export default function DictationPage() {
     const [currentSegIndex, setCurrentSegIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(false);
     const [showResult, setShowResult] = useState(false);
-    
+
     const [blanks, setBlanks] = useState<{ token: string, isBlank: boolean, userValue: string }[]>([]);
 
     // API State
@@ -165,6 +168,14 @@ export default function DictationPage() {
     const [levelCode, setLevelCode] = useState<string>(typeof params.levelId === 'string' ? params.levelId.toUpperCase() : "A1");
     const [isLoading, setIsLoading] = useState(true);
     const resolvedVideoSrc = videoId || lessonVideoSrc || `/videos/${params.levelId}/Lesson ${params.topicId}.mp4`;
+
+    const [aiTranslation, setAiTranslation] = useState<string>("");
+    const [isTranslating, setIsTranslating] = useState(false);
+
+    const [aiExplanation, setAiExplanation] = useState<string>("");
+    const [isExplaining, setIsExplaining] = useState(false);
+
+    const [isGeneratingBlanks, setIsGeneratingBlanks] = useState(false);
 
     const currentSegment = segments[currentSegIndex];
     const activeSegmentRef = useRef(currentSegIndex);
@@ -259,26 +270,97 @@ export default function DictationPage() {
     useEffect(() => {
         if (!currentSegment) return;
 
-        // Generate fill-in-the-blanks (Cloze) logic
+        let isMounted = true;
         const tokens = currentSegment.text.match(/\b\w+\b|[^\w]+/g) || [];
         const wordTokens = tokens.map((token, index) => ({ token, index })).filter(t => /^\w+$/.test(t.token));
-        
-        // Randomly pick ~30% of words to be blanks (at least 1)
-        const shuffled = [...wordTokens].sort(() => 0.5 - Math.random());
-        const blankCount = Math.max(1, Math.floor(wordTokens.length * 0.3));
-        const blankIndices = new Set(shuffled.slice(0, blankCount).map(t => t.index));
 
-        setBlanks(
-            tokens.map((token, index) => ({
-                token,
-                isBlank: blankIndices.has(index),
-                userValue: ""
-            }))
-        );
+        const fallbackRandom = () => {
+            if (!isMounted) return;
+            const shuffled = [...wordTokens].sort(() => 0.5 - Math.random());
+            const blankCount = Math.max(1, Math.floor(wordTokens.length * 0.3));
+            const blankIndices = new Set(shuffled.slice(0, blankCount).map(t => t.index));
+
+            setBlanks(
+                tokens.map((token, index) => ({
+                    token,
+                    isBlank: blankIndices.has(index),
+                    userValue: ""
+                }))
+            );
+        };
+
+        const generateWithAI = async () => {
+            setIsGeneratingBlanks(true);
+            // Always generate a safe fallback state first rapidly in case user interaction is eager
+            fallbackRandom();
+
+            try {
+                const prompt = `Lệnh hệ thống nội bộ (Bypass Router): Chỉ trích xuất 2 hoặc 3 từ khóa quan trọng nhất từ câu sau. YÊU CẦU NGHIÊM NGẶT: Trả về DUY NHẤT một mảng JSON chứa các từ đó, không có bất kỳ nội dung nào khác, không kèm văn bản, không bọc thẻ markdown. Ví dụ: ["word1", "word2"]. Câu tiếng Anh: "${currentSegment.text}"`;
+                const res = await fetch("/api/ai-assistant", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        messages: [{ role: 'user', content: prompt }],
+                    }),
+                });
+                if (!res.ok) throw new Error("API failed");
+                const data = await res.json();
+
+                let wordsToBlank: string[] = [];
+                try {
+                    const cleanJson = data.text.replace(/```json/g, '').replace(/```/g, '').trim();
+                    const match = cleanJson.match(/\[[\s\S]*?\]/);
+                    if (match) {
+                        wordsToBlank = JSON.parse(match[0]);
+                    } else {
+                        wordsToBlank = JSON.parse(cleanJson);
+                    }
+                } catch (e) {
+                    console.error("AI did not return valid JSON", data.text);
+                    throw new Error("Invalid format");
+                }
+
+                if (!isMounted) return;
+
+                if (!Array.isArray(wordsToBlank) || wordsToBlank.length === 0) {
+                    fallbackRandom();
+                } else {
+                    const wordsLower = wordsToBlank.map(w => w.toLowerCase());
+                    let hasAtLeastOneBlank = false;
+                    const newBlanks = tokens.map(token => {
+                        const isWord = /^\w+$/.test(token);
+                        const shouldBlank = isWord && wordsLower.includes(token.toLowerCase());
+                        if (shouldBlank) hasAtLeastOneBlank = true;
+                        return {
+                            token,
+                            isBlank: shouldBlank,
+                            userValue: ""
+                        };
+                    });
+
+                    if (!hasAtLeastOneBlank) {
+                        fallbackRandom();
+                    } else {
+                        setBlanks(newBlanks);
+                    }
+                }
+            } catch (err) {
+                fallbackRandom();
+            } finally {
+                if (isMounted) setIsGeneratingBlanks(false);
+            }
+        };
+
+        generateWithAI();
+
         setShowResult(false);
         setIsTextRevealed(false); // Reset reveal state on new segment
         setTranscript("");
         setRecognitionError("");
+        setAiTranslation("");
+        setAiExplanation("");
+
+        return () => { isMounted = false; };
     }, [currentSegIndex, currentSegment]);
 
     const handleNext = () => {
@@ -511,7 +593,7 @@ export default function DictationPage() {
                         // stop tracks
                         try {
                             mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
-                        } catch {}
+                        } catch { }
                         mediaStreamRef.current = null;
                         mediaRecorderRef.current = null;
                     }
@@ -524,7 +606,7 @@ export default function DictationPage() {
                 setTimeout(() => {
                     try {
                         if (recorder.state === 'recording') recorder.stop();
-                    } catch (e) {}
+                    } catch (e) { }
                 }, 10000);
             } catch (err) {
                 console.error('MediaRecorder error:', err);
@@ -625,6 +707,27 @@ export default function DictationPage() {
                                 {copy.unsupportedVideo}
                             </video>
                         </div>
+
+                        {/* AI Explanation Block */}
+                        {(isExplaining || aiExplanation) && (
+                            <div className="mt-6 rounded-xl border border-indigo-200 bg-indigo-50 p-5 shadow-sm dark:border-indigo-500/30 dark:bg-indigo-500/10">
+                                <div className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+                                    <Sparkles size={16} />
+                                    <span>AI Tutor giải thích</span>
+                                </div>
+                                {isExplaining ? (
+                                    <div className="flex animate-pulse space-x-2">
+                                        <div className="h-2 w-2 rounded-full bg-indigo-400"></div>
+                                        <div className="h-2 w-2 rounded-full bg-indigo-400"></div>
+                                        <div className="h-2 w-2 rounded-full bg-indigo-400"></div>
+                                    </div>
+                                ) : (
+                                    <div className="text-[15px] leading-relaxed text-indigo-900 dark:text-indigo-100 whitespace-pre-wrap">
+                                        {aiExplanation}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-center border-t border-slate-200 bg-white px-4 py-4 dark:border-border dark:bg-card">
@@ -646,7 +749,7 @@ export default function DictationPage() {
                 {/* RIGHT PANEL: PRACTICE */}
                 <section className={`relative flex-1 flex-col bg-slate-100 dark:bg-background ${isVideoHidden ? 'mx-auto w-full max-w-4xl border-x border-slate-200 dark:border-border' : 'flex'}`}>
                     <div className="p-6 md:p-8 flex-1 overflow-y-auto space-y-6">
-                        
+
                         {/* Fill in the blanks Box */}
                         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-border dark:bg-card">
                             <div className="flex items-center justify-between border-b border-slate-200 p-4 dark:border-border">
@@ -655,7 +758,7 @@ export default function DictationPage() {
                                         {isPlaying ? <Pause size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
                                     </button>
                                     <span className="text-sm font-medium text-slate-600 dark:text-muted-foreground">
-                                            — {copy.fillPractice} (Fill in the blanks) — {currentSegIndex + 1} / {segments.length}
+                                        — {copy.fillPractice} (Fill in the blanks) — {currentSegIndex + 1} / {segments.length}
                                     </span>
                                 </div>
                                 <button className="text-slate-500 transition hover:text-slate-900 dark:text-muted-foreground dark:hover:text-foreground">
@@ -663,33 +766,84 @@ export default function DictationPage() {
                                 </button>
                             </div>
 
-                            <div className="flex flex-wrap items-center gap-x-1 gap-y-2 p-6 text-xl leading-[2.5] text-foreground md:p-8 md:text-2xl">
-                                {blanks.map((b, i) => (
-                                    b.isBlank ? (
-                                        <input
-                                            key={i}
-                                            type="text"
-                                            value={b.userValue}
-                                            onChange={(e) => handleBlankChange(i, e.target.value)}
-                                            style={{ width: `${Math.max(4, b.token.length + 1)}ch` }}
-                                            className={`mx-1 px-1 text-center bg-transparent border-b-2 outline-none transition-colors duration-200 
-                                                ${showResult 
-                                                    ? (b.userValue.toLowerCase() === b.token.toLowerCase() 
-                                                        ? 'border-emerald-500 text-emerald-400' 
-                                                        : 'border-rose-500 text-rose-400') 
-                                                    : 'border-slate-400 text-blue-600 hover:border-blue-500 focus:border-blue-500 dark:border-slate-500 dark:text-blue-300'
-                                                }`}
-                                            spellCheck={false}
-                                        />
-                                    ) : (
-                                        <span key={i} className="whitespace-pre-wrap leading-none mt-1">{b.token}</span>
-                                    )
-                                ))}
+                            <div className="flex flex-wrap items-center gap-x-1 gap-y-2 p-6 text-xl leading-[2.5] text-foreground md:p-8 md:text-2xl min-h-[160px]">
+                                {isGeneratingBlanks ? (
+                                    <div className="w-full flex-1 flex flex-col items-center justify-center text-slate-400 gap-4 mt-8">
+                                        <div className="flex animate-pulse space-x-2">
+                                            <div className="size-2.5 rounded-full bg-blue-500"></div>
+                                            <div className="size-2.5 rounded-full bg-blue-500 delay-150"></div>
+                                            <div className="size-2.5 rounded-full bg-blue-500 delay-300"></div>
+                                        </div>
+                                        <span className="text-sm font-semibold tracking-wide">AI đang thiết kế bài tập đục lỗ...</span>
+                                    </div>
+                                ) : (
+                                    blanks.map((b, i) => (
+                                        b.isBlank ? (
+                                            <input
+                                                key={i}
+                                                type="text"
+                                                value={b.userValue}
+                                                onChange={(e) => handleBlankChange(i, e.target.value)}
+                                                style={{ width: `${Math.max(4, b.token.length + 1)}ch` }}
+                                                className={`mx-1 px-1 text-center bg-transparent border-b-2 outline-none transition-colors duration-200 
+                                                    ${showResult
+                                                        ? (b.userValue.toLowerCase() === b.token.toLowerCase()
+                                                            ? 'border-emerald-500 text-emerald-400'
+                                                            : 'border-rose-500 text-rose-400')
+                                                        : 'border-slate-400 text-blue-600 hover:border-blue-500 focus:border-blue-500 dark:border-slate-500 dark:text-blue-300'
+                                                    }`}
+                                                spellCheck={false}
+                                            />
+                                        ) : (
+                                            <span key={i} className="whitespace-pre-wrap leading-none mt-1">{b.token}</span>
+                                        )
+                                    ))
+                                )}
                             </div>
 
                             <div className="flex items-center justify-between border-t border-slate-200 p-4 dark:border-border">
-                                <button 
-                                    onClick={() => setShowResult(true)}
+                                <button
+                                    disabled={isGeneratingBlanks}
+                                    onClick={() => {
+                                        setShowResult(true);
+                                        const blankedWords = blanks.filter(b => b.isBlank).map(b => b.token);
+                                        const wordList = blankedWords.map((w, i) => `${i + 1}. "${w}"`).join(', ');
+                                        const question = `Lệnh hệ thống nội bộ (Phân tích ngữ pháp): Phân tích các từ trống trong câu sau cho người học trình độ A1/A2.\n\nCâu: "${currentSegment.text}"\nCác từ trống: ${wordList}\n\nVới mỗi từ trống hãy cho biết: nghĩa tiếng Việt, lý do điền từ đó, loại từ. Sau đó giải thích ngữ pháp câu và cho ví dụ tương tự.`;
+
+                                        if (!aiExplanation && !isExplaining) {
+                                            setIsExplaining(true);
+                                            fetch("/api/ai-assistant", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({
+                                                    messages: [{ role: 'user', content: question }],
+                                                }),
+                                            }).then(res => res.json()).then(data => {
+                                                setAiExplanation(data.text);
+                                            }).catch(() => {
+                                                setAiExplanation("Lỗi giải thích.");
+                                            }).finally(() => {
+                                                setIsExplaining(false);
+                                            });
+                                        }
+
+                                        if (!aiTranslation && !isTranslating) {
+                                            setIsTranslating(true);
+                                            fetch("/api/ai-assistant", {
+                                                method: "POST",
+                                                headers: { "Content-Type": "application/json" },
+                                                body: JSON.stringify({
+                                                    messages: [{ role: 'user', content: `Dịch câu này sang tiếng Việt, chỉ trả lời bằng ngữ nghĩa tiếng Việt ngắn gọn, không kèm giải thích thừa: "${currentSegment.text}"` }],
+                                                }),
+                                            }).then(res => res.json()).then(data => {
+                                                setAiTranslation(data.text);
+                                            }).catch(() => {
+                                                setAiTranslation("Lỗi dịch thuật.");
+                                            }).finally(() => {
+                                                setIsTranslating(false);
+                                            });
+                                        }
+                                    }}
                                     className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg transition"
                                 >
                                     {copy.check}
@@ -716,8 +870,15 @@ export default function DictationPage() {
                             <p className="mb-4 text-[15px] font-medium text-foreground">
                                 {copy.translationLabel} {currentSegment.text}
                             </p>
+
+                            {isTranslating ? (
+                                <p className="mb-4 text-[15px] font-medium text-slate-500 animate-pulse">Đang dịch...</p>
+                            ) : aiTranslation ? (
+                                <p className="mb-4 text-[15px] font-medium text-indigo-600 dark:text-indigo-400 whitespace-pre-wrap">{aiTranslation}</p>
+                            ) : null}
+
                             <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
-                                <span>{copy.translatedByUser}</span>
+                                <span className="flex items-center gap-1.5"><Sparkles size={14} className="text-indigo-400" /> DỊCH BỞI AI</span>
                                 <div className="flex items-center gap-2">
                                     <button className="flex items-center gap-1 rounded bg-slate-100 px-3 py-1.5 text-slate-600 transition hover:text-slate-900 dark:bg-secondary dark:text-muted-foreground dark:hover:text-foreground">
                                         <Edit3 size={12} /> Edit
@@ -754,9 +915,9 @@ export default function DictationPage() {
                                 )}
 
                                 {transcript && !isTextRevealed && (
-                                 <p className="text-sm text-rose-400 mt-2">
-                                         {copy.youSaid} &quot;{transcript}&quot;. {copy.notMatch}
-                                     </p>
+                                    <p className="text-sm text-rose-400 mt-2">
+                                        {copy.youSaid} &quot;{transcript}&quot;. {copy.notMatch}
+                                    </p>
                                 )}
                                 {recognitionError && (
                                     <p className="text-sm text-rose-400 mt-2">{recognitionError}</p>
@@ -783,20 +944,20 @@ export default function DictationPage() {
                                 >
                                     <Volume2 size={16} /> {copy.listenSample}
                                 </button>
-                                <button 
+                                <button
                                     onClick={startRecording}
                                     className={`px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition border
-                                        ${isRecording 
-                                            ? 'bg-rose-100 border-rose-300 text-rose-700 animate-pulse dark:bg-rose-500/30 dark:border-rose-500/50 dark:text-rose-300' 
+                                        ${isRecording
+                                            ? 'bg-rose-100 border-rose-300 text-rose-700 animate-pulse dark:bg-rose-500/30 dark:border-rose-500/50 dark:text-rose-300'
                                             : 'bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 dark:border-rose-500/20 dark:text-rose-400'
                                         }
                                     `}
                                 >
                                     <Mic size={16} /> {isRecording ? copy.recording : copy.recordVoice}
                                 </button>
-                                
+
                                 {!isTextRevealed && (
-                                    <button 
+                                    <button
                                         onClick={() => setIsTextRevealed(true)}
                                         className="ml-auto flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-200 hover:text-slate-900 dark:border-border dark:bg-secondary dark:text-muted-foreground dark:hover:bg-muted dark:hover:text-foreground"
                                     >

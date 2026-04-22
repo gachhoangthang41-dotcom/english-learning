@@ -12,7 +12,10 @@ import {
     Edit3,
     MoreHorizontal,
     Eye,
-    Sparkles
+    Sparkles,
+    Loader2,
+    Bot,
+    Star
 } from "lucide-react";
 import { useLanguage } from '@/views/components/language-provider';
 import { LESSONS_BY_LEVEL } from '@/models/data/a1-lessons';
@@ -79,6 +82,7 @@ export default function DictationPage() {
             replaySentence: "Replay this sentence",
             next: "Next",
             translationLabel: "Vietnamese translation for:",
+            translationMissing: "No translation available yet.",
             pronunciationTitle: "Pronunciation & Recording",
             revealHint: "Record your voice to reveal the answer",
             youSaid: "You said:",
@@ -86,8 +90,16 @@ export default function DictationPage() {
             listenSample: "Listen to sample",
             recording: "Recording...",
             recordVoice: "Record your voice",
+            recordAgain: "Record again",
             revealAnswer: "Show answer",
             translatedByUser: "Translated by a user",
+            aiEvaluating: "AI is evaluating your pronunciation...",
+            aiEvalTitle: "AI PRONUNCIATION EVALUATION",
+            scoringTitle: "Scoring Criteria",
+            scoringAccuracy: "Vocabulary Accuracy (40%): Saying the correct words",
+            scoringStructure: "Sentence Structure (30%): Correct word order & completeness",
+            scoringPronunciation: "Pronunciation & Intonation (20%): Clear, natural pronunciation",
+            scoringFluency: "Fluency (10%): Smooth, confident, uninterrupted speech",
             unitTitle: `Unit ${params.topicId}`,
             defaultTitle: `Unit ${params.topicId}`,
         }
@@ -112,6 +124,7 @@ export default function DictationPage() {
             replaySentence: "Nghe lại câu này",
             next: "Tiếp",
             translationLabel: "Bản dịch tiếng Việt cho:",
+            translationMissing: "Chưa có bản dịch.",
             pronunciationTitle: "Phát âm & Ghi âm",
             revealHint: "Hãy ghi âm để xem câu trả lời",
             youSaid: "Bạn đã đọc:",
@@ -119,8 +132,16 @@ export default function DictationPage() {
             listenSample: "Nghe mẫu",
             recording: "Đang thu âm...",
             recordVoice: "Thu âm của bạn",
+            recordAgain: "Thu âm lại",
             revealAnswer: "Hiện câu trả lời",
             translatedByUser: "Dịch bởi người dùng",
+            aiEvaluating: "AI đang đánh giá phát âm của bạn...",
+            aiEvalTitle: "AI ĐÁNH GIÁ PHÁT ÂM",
+            scoringTitle: "Tiêu chí chấm điểm",
+            scoringAccuracy: "Độ chính xác từ vựng (40%): Nói đúng các từ trong câu mẫu",
+            scoringStructure: "Cấu trúc câu (30%): Đúng thứ tự từ và đầy đủ nội dung",
+            scoringPronunciation: "Phát âm & Ngữ điệu (20%): Phát âm rõ ràng, tự nhiên",
+            scoringFluency: "Độ lưu loát (10%): Nói trôi chảy, tự tin, không ngắt quãng",
             unitTitle: `Bài ${params.topicId}`,
             defaultTitle: `Bài ${params.topicId}`,
         };
@@ -242,6 +263,17 @@ export default function DictationPage() {
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const mediaStreamRef = useRef<MediaStream | null>(null);
     const [pronunciationResult, setPronunciationResult] = useState<any | null>(null);
+    const [isCheckingPronunciation, setIsCheckingPronunciation] = useState(false);
+    const [wordAnalysis, setWordAnalysis] = useState<{
+        words: { ref: string; user: string | null; isCorrect: boolean }[];
+        score: number;
+        correctCount: number;
+        totalCount: number;
+        userTranscript: string;
+        referenceText: string;
+        missedWords: string[];
+        wrongWords: { expected: string; got: string }[];
+    } | null>(null);
 
     // --- FETCH DATA ---
     useEffect(() => {
@@ -359,6 +391,8 @@ export default function DictationPage() {
         setRecognitionError("");
         setAiTranslation("");
         setAiExplanation("");
+        setIsCheckingPronunciation(false);
+        setWordAnalysis(null);
 
         return () => { isMounted = false; };
     }, [currentSegIndex, currentSegment]);
@@ -452,6 +486,153 @@ export default function DictationPage() {
         });
     }
 
+    const compareWordsDetailed = (reference: string, userSaid: string) => {
+        const clean = (s: string) => s.replace(/[.,/#!$%^&*;:{}=\-_`~()'"?!]/g, "").toLowerCase().trim();
+        const refWords = clean(reference).split(/\s+/).filter(Boolean);
+        const userWords = clean(userSaid).split(/\s+/).filter(Boolean);
+
+        const words: { ref: string; user: string | null; isCorrect: boolean }[] = [];
+        const missedWords: string[] = [];
+        const wrongWords: { expected: string; got: string }[] = [];
+
+        let userIdx = 0;
+        for (let i = 0; i < refWords.length; i++) {
+            const refWord = refWords[i];
+            if (userIdx < userWords.length) {
+                const userWord = userWords[userIdx];
+                const isExact = refWord === userWord;
+                const isSimilar = !isExact && (
+                    refWord.includes(userWord) || userWord.includes(refWord) ||
+                    levenshteinDistance(refWord, userWord) <= Math.max(1, Math.floor(refWord.length * 0.3))
+                );
+                const isCorrect = isExact || isSimilar;
+
+                words.push({ ref: refWord, user: userWord, isCorrect });
+                if (!isCorrect) {
+                    wrongWords.push({ expected: refWord, got: userWord });
+                }
+                userIdx++;
+            } else {
+                words.push({ ref: refWord, user: null, isCorrect: false });
+                missedWords.push(refWord);
+            }
+        }
+
+        const correctCount = words.filter((w) => w.isCorrect).length;
+        const score = refWords.length > 0 ? Math.round((correctCount / refWords.length) * 100) : 0;
+
+        return {
+            words,
+            score,
+            correctCount,
+            totalCount: refWords.length,
+            userTranscript: userSaid,
+            referenceText: reference,
+            missedWords,
+            wrongWords,
+        };
+    };
+
+    function levenshteinDistance(a: string, b: string): number {
+        const matrix: number[][] = [];
+        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                if (b[i - 1] === a[j - 1]) {
+                    matrix[i][j] = matrix[i - 1][j - 1];
+                } else {
+                    matrix[i][j] = Math.min(
+                        matrix[i - 1][j - 1] + 1,
+                        matrix[i][j - 1] + 1,
+                        matrix[i - 1][j] + 1
+                    );
+                }
+            }
+        }
+        return matrix[b.length][a.length];
+    }
+
+    const ipaDict: Record<string, string> = {
+        "hello": "/həˈloʊ/", "and": "/ænd/", "welcome": "/ˈwɛlkəm/", "to": "/tuː/",
+        "this": "/ðɪs/", "slow": "/sloʊ/", "english": "/ˈɪŋglɪʃ/", "listening": "/ˈlɪs.ən.ɪŋ/",
+        "for": "/fɔːr/", "beginners": "/bɪˈgɪn.ərz/", "the": "/ðə/", "a": "/ə/",
+        "is": "/ɪz/", "it": "/ɪt/", "in": "/ɪn/", "on": "/ɒn/", "at": "/æt/",
+        "my": "/maɪ/", "name": "/neɪm/", "i": "/aɪ/", "am": "/æm/", "you": "/juː/",
+        "are": "/ɑːr/", "we": "/wiː/", "they": "/ðeɪ/", "he": "/hiː/", "she": "/ʃiː/",
+        "have": "/hæv/", "has": "/hæz/", "do": "/duː/", "does": "/dʌz/", "not": "/nɒt/",
+        "can": "/kæn/", "will": "/wɪl/", "what": "/wɒt/", "where": "/weər/", "when": "/wen/",
+        "how": "/haʊ/", "who": "/huː/", "why": "/waɪ/", "with": "/wɪð/", "from": "/frɒm/",
+        "about": "/əˈbaʊt/", "like": "/laɪk/", "just": "/dʒʌst/", "but": "/bʌt/", "or": "/ɔːr/",
+        "so": "/soʊ/", "if": "/ɪf/", "very": "/ˈver.i/", "good": "/gʊd/", "new": "/njuː/",
+        "first": "/fɜːrst/", "also": "/ˈɔːl.soʊ/", "people": "/ˈpiː.pəl/", "know": "/noʊ/",
+        "time": "/taɪm/", "think": "/θɪŋk/", "make": "/meɪk/", "go": "/goʊ/", "come": "/kʌm/",
+        "see": "/siː/", "look": "/lʊk/", "want": "/wɒnt/", "give": "/gɪv/", "use": "/juːz/",
+        "find": "/faɪnd/", "tell": "/tel/", "ask": "/ɑːsk/", "work": "/wɜːrk/", "feel": "/fiːl/",
+        "try": "/traɪ/", "call": "/kɔːl/", "keep": "/kiːp/", "let": "/let/", "begin": "/bɪˈgɪn/",
+        "show": "/ʃoʊ/", "hear": "/hɪər/", "play": "/pleɪ/", "run": "/rʌn/", "move": "/muːv/",
+        "help": "/help/", "talk": "/tɔːk/", "turn": "/tɜːrn/", "start": "/stɑːrt/", "right": "/raɪt/",
+        "little": "/ˈlɪt.əl/", "big": "/bɪg/", "small": "/smɔːl/", "long": "/lɒŋ/", "old": "/oʊld/",
+        "young": "/jʌŋ/", "important": "/ɪmˈpɔːr.tənt/", "today": "/təˈdeɪ/", "back": "/bæk/",
+        "up": "/ʌp/", "out": "/aʊt/", "down": "/daʊn/", "after": "/ˈɑːf.tər/", "before": "/bɪˈfɔːr/",
+        "now": "/naʊ/", "here": "/hɪər/", "there": "/ðeər/", "then": "/ðen/", "more": "/mɔːr/",
+        "many": "/ˈmen.i/", "some": "/sʌm/", "than": "/ðæn/", "other": "/ˈʌð.ər/", "thing": "/θɪŋ/",
+        "practice": "/ˈpræk.tɪs/", "learn": "/lɜːrn/", "study": "/ˈstʌd.i/", "read": "/riːd/",
+        "write": "/raɪt/", "speak": "/spiːk/", "say": "/seɪ/", "understand": "/ʌn.dərˈstænd/",
+        "please": "/pliːz/", "thank": "/θæŋk/", "thanks": "/θæŋks/", "sorry": "/ˈsɒr.i/",
+        "yes": "/jes/", "no": "/noʊ/", "morning": "/ˈmɔːr.nɪŋ/", "evening": "/ˈiːv.nɪŋ/",
+        "night": "/naɪt/", "day": "/deɪ/", "week": "/wiːk/", "water": "/ˈwɔː.tər/",
+        "food": "/fuːd/", "eat": "/iːt/", "drink": "/drɪŋk/", "house": "/haʊs/", "home": "/hoʊm/",
+        "family": "/ˈfæm.ə.li/", "friend": "/frend/", "school": "/skuːl/", "teacher": "/ˈtiː.tʃər/",
+        "student": "/ˈstjuː.dənt/", "book": "/bʊk/", "class": "/klɑːs/", "love": "/lʌv/",
+        "happy": "/ˈhæp.i/", "beautiful": "/ˈbjuː.tə.fəl/", "nice": "/naɪs/", "great": "/greɪt/",
+        "always": "/ˈɔːl.weɪz/", "never": "/ˈnev.ər/", "sometimes": "/ˈsʌm.taɪmz/",
+        "often": "/ˈɒf.ən/", "usually": "/ˈjuː.ʒu.ə.li/", "because": "/bɪˈkɒz/",
+        "every": "/ˈev.ri/", "between": "/bɪˈtwiːn/", "sentence": "/ˈsen.təns/", "word": "/wɜːrd/",
+        "another": "/əˈnʌð.ər/", "again": "/əˈgen/", "country": "/ˈkʌn.tri/", "together": "/təˈgeð.ər/",
+    };
+
+    const getIPA = (word: string): string | null => {
+        return ipaDict[word.toLowerCase()] || null;
+    };
+
+    const generateComment = (analysis: NonNullable<typeof wordAnalysis>): string => {
+        const { score, correctCount, totalCount, wrongWords, missedWords } = analysis;
+        const lines: string[] = [];
+
+        if (score === 100) {
+            lines.push("Xuat sac! Ban da noi chinh xac toan bo cau.");
+        } else if (score >= 80) {
+            lines.push(`Rat tot! Ban noi dung ${correctCount}/${totalCount} tu.`);
+        } else if (score >= 60) {
+            lines.push(`Kha tot! Ban noi dung ${correctCount}/${totalCount} tu.`);
+        } else if (score >= 40) {
+            lines.push(`Can cai thien! Ban moi dung ${correctCount}/${totalCount} tu.`);
+        } else {
+            lines.push(`Hay thu lai! Ban moi dung ${correctCount}/${totalCount} tu.`);
+        }
+
+        if (wrongWords.length > 0) {
+            lines.push("");
+            lines.push("Phan tich loi phat am:");
+            wrongWords.forEach((w) => {
+                const ipa = getIPA(w.expected);
+                if (ipa) {
+                    lines.push(`- "${w.expected}" ${ipa}: ban noi thanh "${w.got}".`);
+                } else {
+                    lines.push(`- "${w.expected}": ban noi thanh "${w.got}".`);
+                }
+            });
+        }
+
+        if (missedWords.length > 0) {
+            lines.push("");
+            lines.push(`Tu bi thieu: ${missedWords.map((w) => `"${w}"`).join(", ")}.`);
+        }
+
+        return lines.join("\n");
+    };
+
     const startSpeechRecognition = () => {
         const windowWithSpeech = window as Window & {
             SpeechRecognition?: BrowserSpeechRecognitionConstructor;
@@ -482,12 +663,8 @@ export default function DictationPage() {
             setTranscript(speechResult);
 
             if (currentSegment) {
-                const cleanResult = speechResult.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").toLowerCase().trim();
-                const cleanTarget = currentSegment.text.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "").toLowerCase().trim();
-
-                if (cleanResult === cleanTarget || cleanTarget.includes(cleanResult)) {
-                    setIsTextRevealed(true);
-                }
+                const analysis = compareWordsDetailed(currentSegment.text, speechResult);
+                setWordAnalysis(analysis);
             }
         };
 
@@ -498,6 +675,12 @@ export default function DictationPage() {
 
         recognition.onspeechend = () => {
             recognition.stop();
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.stop();
+            } else {
+                // SpeechRecognition-only fallback: reveal answer after user finishes speaking.
+                setIsTextRevealed(true);
+            }
             setIsRecording(false);
         };
 
@@ -505,8 +688,12 @@ export default function DictationPage() {
     };
 
     const startRecording = async () => {
+        // Hide revealed text when starting a new recording attempt.
+        setIsTextRevealed(false);
         setRecognitionError("");
         setPronunciationResult(null);
+        setIsCheckingPronunciation(false);
+        setWordAnalysis(null);
 
         // If already recording via MediaRecorder, stop it
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -554,6 +741,9 @@ export default function DictationPage() {
 
                 recorder.onstop = async () => {
                     setIsRecording(false);
+                    // Reveal full sentence only after user has finished speaking/recording.
+                    setIsTextRevealed(true);
+                    setIsCheckingPronunciation(true);
                     try {
                         const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
                         const dataUrl = await blobToDataUrl(blob);
@@ -590,6 +780,7 @@ export default function DictationPage() {
                         console.error('Pronunciation check error:', err);
                         setRecognitionError(copy.recognitionError);
                     } finally {
+                        setIsCheckingPronunciation(false);
                         // stop tracks
                         try {
                             mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
@@ -601,13 +792,7 @@ export default function DictationPage() {
 
                 recorder.start();
                 mediaRecorderRef.current = recorder;
-
-                // auto-stop after a reasonable duration (10s) to avoid cutting user off too early
-                setTimeout(() => {
-                    try {
-                        if (recorder.state === 'recording') recorder.stop();
-                    } catch (e) { }
-                }, 10000);
+                startSpeechRecognition();
             } catch (err) {
                 console.error('MediaRecorder error:', err);
                 startSpeechRecognition();
@@ -628,6 +813,8 @@ export default function DictationPage() {
             <button onClick={() => router.back()} className="rounded bg-blue-600 px-4 py-2 text-white">{copy.goBack}</button>
         </div>;
     }
+
+    const translationText = (aiTranslation || currentSegment?.translation || "").trim();
 
     return (
         <div className="mx-auto flex h-screen max-w-[1600px] flex-col overflow-hidden bg-background font-sans text-foreground">
@@ -866,29 +1053,32 @@ export default function DictationPage() {
                             </div>
                         </div>
 
-                        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-border dark:bg-card">
-                            <p className="mb-4 text-[15px] font-medium text-foreground">
-                                {copy.translationLabel} {currentSegment.text}
-                            </p>
+                        {showResult && (
+                            <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-border dark:bg-card">
+                                <p className="mb-2 text-[15px] font-medium text-foreground">
+                                    {copy.translationLabel} {currentSegment.text}
+                                </p>
+                                <p className="mb-4 text-[15px] font-semibold text-indigo-600 dark:text-indigo-400 whitespace-pre-wrap">
+                                    {translationText || copy.translationMissing}
+                                </p>
 
-                            {isTranslating ? (
-                                <p className="mb-4 text-[15px] font-medium text-slate-500 animate-pulse">Đang dịch...</p>
-                            ) : aiTranslation ? (
-                                <p className="mb-4 text-[15px] font-medium text-indigo-600 dark:text-indigo-400 whitespace-pre-wrap">{aiTranslation}</p>
-                            ) : null}
+                                {isTranslating && !aiTranslation && (
+                                    <p className="mb-3 text-sm font-medium text-slate-500 animate-pulse">Đang dịch...</p>
+                                )}
 
-                            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
-                                <span className="flex items-center gap-1.5"><Sparkles size={14} className="text-indigo-400" /> DỊCH BỞI AI</span>
-                                <div className="flex items-center gap-2">
-                                    <button className="flex items-center gap-1 rounded bg-slate-100 px-3 py-1.5 text-slate-600 transition hover:text-slate-900 dark:bg-secondary dark:text-muted-foreground dark:hover:text-foreground">
-                                        <Edit3 size={12} /> Edit
-                                    </button>
-                                    <button className="rounded bg-slate-100 px-2 py-1.5 text-slate-600 transition hover:text-slate-900 dark:bg-secondary dark:text-muted-foreground dark:hover:text-foreground">
-                                        <MoreHorizontal size={14} />
-                                    </button>
+                                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
+                                    <span className="flex items-center gap-1.5"><Sparkles size={14} className="text-indigo-400" /> DỊCH BỞI AI</span>
+                                    <div className="flex items-center gap-2">
+                                        <button className="flex items-center gap-1 rounded bg-slate-100 px-3 py-1.5 text-slate-600 transition hover:text-slate-900 dark:bg-secondary dark:text-muted-foreground dark:hover:text-foreground">
+                                            <Edit3 size={12} /> Edit
+                                        </button>
+                                        <button className="rounded bg-slate-100 px-2 py-1.5 text-slate-600 transition hover:text-slate-900 dark:bg-secondary dark:text-muted-foreground dark:hover:text-foreground">
+                                            <MoreHorizontal size={14} />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
+                        )}
 
                         <div className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-[#1e293b] dark:bg-[#1e293b]/40">
                             <div className="absolute top-0 left-0 w-1 h-full bg-blue-500/50" />
@@ -953,7 +1143,7 @@ export default function DictationPage() {
                                         }
                                     `}
                                 >
-                                    <Mic size={16} /> {isRecording ? copy.recording : copy.recordVoice}
+                                    <Mic size={16} /> {isRecording ? copy.recording : (isTextRevealed ? copy.recordAgain : copy.recordVoice)}
                                 </button>
 
                                 {!isTextRevealed && (
@@ -966,6 +1156,204 @@ export default function DictationPage() {
                                 )}
                             </div>
                         </div>
+
+                        {(isCheckingPronunciation || pronunciationResult || wordAnalysis) && (
+                            <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-[#1e293b] dark:bg-[#1e293b]/40">
+                                <div className="border-b border-slate-200 p-4 dark:border-border">
+                                    <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">
+                                        <Bot size={14} className="text-emerald-400" />
+                                        <span>{copy.aiEvalTitle}</span>
+                                    </div>
+                                </div>
+                                <div className="p-5">
+                                    {isCheckingPronunciation && !pronunciationResult && !wordAnalysis ? (
+                                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                            <Loader2 size={18} className="animate-spin text-blue-400" />
+                                            <span>{copy.aiEvaluating}</span>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-5">
+                                            {wordAnalysis && (
+                                                <div className="flex items-center gap-4">
+                                                    <div
+                                                        className={`flex h-16 w-16 items-center justify-center rounded-2xl text-2xl font-black ${
+                                                            wordAnalysis.score >= 80
+                                                                ? "bg-emerald-100 text-emerald-600 dark:bg-emerald-500/20 dark:text-emerald-400"
+                                                                : wordAnalysis.score >= 50
+                                                                  ? "bg-amber-100 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400"
+                                                                  : "bg-rose-100 text-rose-600 dark:bg-rose-500/20 dark:text-rose-400"
+                                                        }`}
+                                                    >
+                                                        {wordAnalysis.score}
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-bold text-foreground">
+                                                            {wordAnalysis.score >= 80 ? "Đạt! Rất tốt!" : wordAnalysis.score >= 50 ? "Khá! Cần cải thiện thêm" : "Cần luyện thêm nhiều"}
+                                                        </div>
+                                                        <div className="text-xs text-muted-foreground">
+                                                            {wordAnalysis.correctCount}/{wordAnalysis.totalCount} từ đúng
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {wordAnalysis && (
+                                                <div>
+                                                    <div className="mb-3 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">Phân tích từng từ</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {wordAnalysis.words.map((w, i) => (
+                                                            <div
+                                                                key={i}
+                                                                className={`group relative rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                                                                    w.isCorrect
+                                                                        ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-400"
+                                                                        : w.user === null
+                                                                          ? "bg-slate-200 text-slate-400 line-through dark:bg-slate-700 dark:text-slate-500"
+                                                                          : "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-400"
+                                                                }`}
+                                                            >
+                                                                <span>{w.ref}</span>
+                                                                {!w.isCorrect && w.user && (
+                                                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-1 text-[10px] text-white opacity-0 transition group-hover:opacity-100 dark:bg-slate-700">
+                                                                        Bạn nói: &quot;{w.user}&quot;
+                                                                    </div>
+                                                                )}
+                                                                {w.user === null && (
+                                                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded bg-slate-900 px-2 py-1 text-[10px] text-white opacity-0 transition group-hover:opacity-100 dark:bg-slate-700">
+                                                                        Thiếu từ này
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <div className="mt-2 flex items-center gap-4 text-[10px] text-muted-foreground">
+                                                        <span className="flex items-center gap-1">
+                                                            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" /> Đúng
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <span className="inline-block h-2 w-2 rounded-full bg-rose-400" /> Sai
+                                                        </span>
+                                                        <span className="flex items-center gap-1">
+                                                            <span className="inline-block h-2 w-2 rounded-full bg-slate-400" /> Thiếu
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {wordAnalysis?.userTranscript && (
+                                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-border dark:bg-card">
+                                                    <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">Bạn đã nói</div>
+                                                    <div className="text-sm italic text-foreground">&quot;{wordAnalysis.userTranscript}&quot;</div>
+                                                </div>
+                                            )}
+
+                                            {wordAnalysis && wordAnalysis.wrongWords.length > 0 && (
+                                                <div className="rounded-lg border border-rose-200/60 bg-rose-50/50 p-3 dark:border-rose-500/15 dark:bg-rose-500/5">
+                                                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-rose-600 dark:text-rose-400">Từ cần sửa</div>
+                                                    <div className="space-y-2.5">
+                                                        {wordAnalysis.wrongWords.map((w, i) => {
+                                                            const ipa = getIPA(w.expected);
+                                                            return (
+                                                                <div key={i} className="rounded-md bg-white/60 p-2 dark:bg-slate-800/40">
+                                                                    <div className="flex items-center gap-2 text-sm">
+                                                                        <span className="font-medium text-rose-500 line-through">{w.got}</span>
+                                                                        <span className="text-muted-foreground">→</span>
+                                                                        <span className="font-bold text-emerald-600 dark:text-emerald-400">{w.expected}</span>
+                                                                        {ipa && (
+                                                                            <span className="ml-1 rounded bg-indigo-100 px-1.5 py-0.5 text-xs font-mono text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-400">
+                                                                                {ipa}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    {ipa && (
+                                                                        <div className="mt-1 text-[11px] text-muted-foreground">
+                                                                            Đọc là: <span className="font-semibold text-foreground">{ipa}</span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {wordAnalysis && wordAnalysis.missedWords.length > 0 && (
+                                                <div className="rounded-lg border border-amber-200/60 bg-amber-50/50 p-3 dark:border-amber-500/15 dark:bg-amber-500/5">
+                                                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Từ bị thiếu</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {wordAnalysis.missedWords.map((w, i) => {
+                                                            const ipa = getIPA(w);
+                                                            return (
+                                                                <div key={i} className="flex items-center gap-1 rounded bg-amber-100 px-2 py-1 dark:bg-amber-500/20">
+                                                                    <span className="text-sm font-semibold text-amber-700 dark:text-amber-400">{w}</span>
+                                                                    {ipa && <span className="text-[10px] font-mono text-amber-600/70 dark:text-amber-500">{ipa}</span>}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {wordAnalysis && (
+                                                <div className="rounded-lg border border-emerald-200/60 bg-emerald-50/50 p-4 dark:border-emerald-500/15 dark:bg-emerald-500/5">
+                                                    <div className="mb-2 text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Nhận xét chi tiết</div>
+                                                    <div className="whitespace-pre-wrap text-sm leading-6 text-foreground">
+                                                        {generateComment(wordAnalysis)}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {pronunciationResult && (
+                                                <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-border dark:bg-card">
+                                                    <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-muted-foreground">Kết quả từ server</div>
+                                                    <div className="whitespace-pre-wrap text-sm text-foreground">
+                                                        {typeof pronunciationResult === "string"
+                                                            ? pronunciationResult
+                                                            : pronunciationResult?.feedback
+                                                              ? typeof pronunciationResult.feedback === "string"
+                                                                  ? pronunciationResult.feedback
+                                                                  : pronunciationResult.feedback?.message || JSON.stringify(pronunciationResult.feedback, null, 2)
+                                                              : pronunciationResult?.text
+                                                                ? pronunciationResult.text
+                                                                : JSON.stringify(pronunciationResult, null, 2)}
+                                                    </div>
+                                                    {(pronunciationResult?.score !== undefined || pronunciationResult?.confidence !== undefined) && (
+                                                        <div className="mt-2 text-sm font-bold text-emerald-500">
+                                                            Điểm server: {pronunciationResult?.score ?? pronunciationResult?.confidence}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            <div className="rounded-xl border border-blue-200/60 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 p-4 dark:border-blue-500/15 dark:from-blue-500/5 dark:to-indigo-500/5">
+                                                <div className="mb-3 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                                                    <Star size={12} />
+                                                    <span>{copy.scoringTitle}</span>
+                                                </div>
+                                                <ul className="space-y-2 text-xs text-slate-600 dark:text-slate-400">
+                                                    <li className="flex items-start gap-2">
+                                                        <span className="mt-0.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-400" />
+                                                        <span>{copy.scoringAccuracy}</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-2">
+                                                        <span className="mt-0.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-blue-400" />
+                                                        <span>{copy.scoringStructure}</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-2">
+                                                        <span className="mt-0.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-purple-400" />
+                                                        <span>{copy.scoringPronunciation}</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-2">
+                                                        <span className="mt-0.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-amber-400" />
+                                                        <span>{copy.scoringFluency}</span>
+                                                    </li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                     </div>
                 </section>

@@ -15,15 +15,19 @@ const LanguageContext = createContext<LanguageContextType>({
   t: (key) => dictionaries["vi"][key] || key,
 });
 
-export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(() => {
-    if (typeof window === "undefined") {
-      return "vi";
-    }
+const DEFAULT_LANGUAGE: Language = "vi";
 
-    const saved = localStorage.getItem("NEXT_LOCALE");
-    return saved === "vi" || saved === "en" ? saved : "vi";
-  });
+function normalizeLanguage(value: string | null | undefined): Language {
+  return value === "en" ? "en" : "vi";
+}
+
+type LanguageProviderProps = {
+  children: React.ReactNode;
+  initialLanguage?: Language;
+};
+
+export function LanguageProvider({ children, initialLanguage = DEFAULT_LANGUAGE }: LanguageProviderProps) {
+  const [language, setLanguageState] = useState<Language>(normalizeLanguage(initialLanguage));
 
   useEffect(() => {
     document.documentElement.lang = language;
@@ -36,14 +40,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   };
 
   const t = (key: DictionaryKey): string => {
-    // Return key as fallback if translation is not found
     return dictionaries[language]?.[key] || key;
   };
-
-  // To prevent hydration errors when default language (vi) mismatches localStorage (en)
-  // We can render children normally, but it might flicker. Next.js handles text node mismatched nicely usually.
-  // Actually, returning a skeleton or null during SSR avoids hydration mismatch, but prevents SEO.
-  // We'll proceed without returning null, standard approach.
 
   return (
     <LanguageContext.Provider value={{ language, setLanguage, t }}>

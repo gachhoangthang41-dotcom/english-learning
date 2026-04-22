@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { prisma } from '@/models/prisma';
-import { gen6DigitCode, hashCode } from '@/services/otp';
-import { sendEmail } from '@/services/mailer';
+import { prisma } from "@/models/prisma";
+import { gen6DigitCode, hashCode } from "@/services/otp";
+import { sendEmail } from "@/services/mailer";
 
 export const runtime = "nodejs";
 
@@ -54,7 +54,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // cooldown 60s theo token LOGIN_2FA gần nhất chưa dùng
     const last = await prisma.token.findFirst({
       where: { userId: user.id, type: "LOGIN_2FA", usedAt: null },
       orderBy: { sentAt: "desc" },
@@ -73,7 +72,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // vô hiệu hoá các token LOGIN_2FA cũ chưa dùng (để chỉ còn 1 mã hợp lệ)
     await prisma.token.updateMany({
       where: { userId: user.id, type: "LOGIN_2FA", usedAt: null },
       data: { usedAt: new Date() },
@@ -92,9 +90,24 @@ export async function POST(req: Request) {
     });
 
     const mailHtml = `Xin chào ${user.username},<br><br>Mã xác thực đăng nhập của bạn là: <b>${code}</b><br>Mã này sẽ hết hạn sau 10 phút.`;
-    await sendEmail(user.email, "Mã xác thực đăng nhập", mailHtml);
 
-    
+    try {
+      await sendEmail(user.email, "Mã xác thực đăng nhập", mailHtml);
+    } catch (mailErr) {
+      console.error("LOGIN SEND OTP ERROR:", mailErr);
+
+      // Revoke pending OTP so user is not blocked by cooldown when SMTP fails.
+      await prisma.token.updateMany({
+        where: { userId: user.id, type: "LOGIN_2FA", usedAt: null },
+        data: { usedAt: new Date() },
+      });
+
+      return NextResponse.json(
+        { status: "error", message: "Không thể gửi mã xác thực. Vui lòng thử lại sau." },
+        { status: 502 }
+      );
+    }
+
     return NextResponse.json({
       status: "2fa_required",
       message: "Vui lòng kiểm tra email để lấy mã xác thực.",
@@ -102,7 +115,7 @@ export async function POST(req: Request) {
       remember,
     });
   } catch (err) {
-    console.error(err);
+    console.error("LOGIN ERROR:", err);
     return NextResponse.json({ status: "error", message: "Lỗi máy chủ." }, { status: 500 });
   }
 }

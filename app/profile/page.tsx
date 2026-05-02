@@ -20,6 +20,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { ThemeToggle } from '@/views/components/theme-toggle';
+import { NotificationBell } from '@/views/components/notification-bell';
 import { useLanguage } from '@/views/components/language-provider';
 
 type MsgType = "error" | "success" | "info";
@@ -186,6 +187,7 @@ export default function ProfilePage() {
         </Link>
 
         <div className="flex items-center gap-3">
+          <NotificationBell />
           <ThemeToggle />
           <Link
             href="/home"
@@ -294,8 +296,8 @@ export default function ProfilePage() {
                         <MenuItem
                           icon={<Bell className="w-5 h-5" />}
                           label={t("notifications")}
-                          active={false}
-                          onClick={() => showMessage("info", t("comingSoon"))}
+                          active={pathname === "/profile/notifications"}
+                          onClick={() => go("/profile/notifications")}
                         />
                         <MenuItem
                           icon={<Shield className="w-5 h-5" />}

@@ -20,6 +20,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { ThemeToggle } from '@/views/components/theme-toggle';
+import { NotificationBell } from '@/views/components/notification-bell';
 
 type MsgType = "error" | "success" | "info";
 
@@ -75,8 +76,8 @@ export default function SecurityPage() {
     msg?.type === "error"
       ? "bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-500/20"
       : msg?.type === "success"
-      ? "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-500/20"
-      : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-500/20";
+        ? "bg-green-50 text-green-700 border border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-500/20"
+        : "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-500/20";
 
   async function loadMe() {
     setLoading(true);
@@ -316,6 +317,7 @@ export default function SecurityPage() {
         </Link>
 
         <div className="flex items-center gap-3">
+          <NotificationBell />
           <ThemeToggle />
           <Link
             href="/home"
@@ -417,7 +419,7 @@ export default function SecurityPage() {
                         {isSettingsOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                       </span>
                     </button>
-                    
+
                     {isSettingsOpen && (
                       <div className="mt-2 ml-4 pl-4 border-l-2 border-white/10 space-y-2">
                         <MenuItem
@@ -429,8 +431,8 @@ export default function SecurityPage() {
                         <MenuItem
                           icon={<Bell className="w-5 h-5" />}
                           label="Thông báo"
-                          active={false}
-                          onClick={() => showMessage("info", "Mục này làm sau nhé.")}
+                          active={pathname === "/profile/notifications"}
+                          onClick={() => go("/profile/notifications")}
                         />
                         <MenuItem
                           icon={<Shield className="w-5 h-5" />}
@@ -455,7 +457,7 @@ export default function SecurityPage() {
                     <h1 className="text-2xl font-extrabold tracking-tight text-slate-800 dark:text-white">
                       Bảo mật
                     </h1>
-                    <p className="text-slate-400 mt-1">
+                    <p className="text-black dark:text-slate-400 mt-1">
                       Đổi tên hiển thị, email và mật khẩu.
                     </p>
                   </div>
@@ -477,7 +479,7 @@ export default function SecurityPage() {
                     <h2 className="font-extrabold text-lg text-slate-800 dark:text-white">
                       Đổi tên hiển thị (biệt danh)
                     </h2>
-                    <p className="text-slate-400 text-sm mt-1">
+                    <p className="text-black dark:text-slate-400 text-sm mt-1">
                       Đổi biệt danh của bạn.
                     </p>
 
@@ -485,7 +487,7 @@ export default function SecurityPage() {
                       <input
                         value={displayName}
                         onChange={(e) => setDisplayName(e.target.value)}
-                        className="flex-1 h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
+                        className="flex-1 h-12 px-4 rounded-xl bg-transparent dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                         placeholder="Nhập tên hiển thị..."
                       />
@@ -503,9 +505,9 @@ export default function SecurityPage() {
                   </div>
 
                   {/* Update email */}
-                  <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-5">
+                  <div className="rounded-2xl border border-black/20 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-5">
                     <h2 className="font-extrabold text-lg text-slate-800 dark:text-white">Đổi Gmail</h2>
-                    <p className="text-slate-400 text-sm mt-1">
+                    <p className="text-black dark:text-slate-400 text-sm mt-1">
                       Để an toàn, cần nhập mật khẩu hiện tại.
                     </p>
 
@@ -513,7 +515,7 @@ export default function SecurityPage() {
                       <input
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
+                        className="h-12 px-4 rounded-xl bg-transparent dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                         placeholder="email@domain.com"
                       />
@@ -521,7 +523,7 @@ export default function SecurityPage() {
                         value={emailPw}
                         onChange={(e) => setEmailPw(e.target.value)}
                         type="password"
-                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
+                        className="h-12 px-4 rounded-xl bg-transparent dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                         placeholder="Mật khẩu hiện tại"
                       />
@@ -544,7 +546,7 @@ export default function SecurityPage() {
                   {/* Change password */}
                   <div className="rounded-2xl border border-black/10 dark:border-white/10 bg-slate-50 dark:bg-white/5 p-5">
                     <h2 className="font-extrabold text-lg text-slate-800 dark:text-white">Đổi mật khẩu</h2>
-                    <p className="text-slate-400 text-sm mt-1">
+                    <p className="text-black dark:text-slate-400 text-sm mt-1">
                       Không thể xem mật khẩu cũ (chỉ đổi).
                     </p>
 
@@ -553,7 +555,7 @@ export default function SecurityPage() {
                         value={currentPw}
                         onChange={(e) => setCurrentPw(e.target.value)}
                         type="password"
-                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
+                        className="h-12 px-4 rounded-xl bg-transparent dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                         placeholder="Mật khẩu hiện tại"
                       />
@@ -561,7 +563,7 @@ export default function SecurityPage() {
                         value={newPw}
                         onChange={(e) => setNewPw(e.target.value)}
                         type="password"
-                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
+                        className="h-12 px-4 rounded-xl bg-transparent dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40"
                         placeholder="Mật khẩu mới (>= 8 ký tự)"
                       />
@@ -569,7 +571,7 @@ export default function SecurityPage() {
                         value={confirmPw}
                         onChange={(e) => setConfirmPw(e.target.value)}
                         type="password"
-                        className="h-12 px-4 rounded-xl bg-white/5 border border-white/10 text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
+                        className="h-12 px-4 rounded-xl bg-transparent dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500
                                    focus:outline-none focus:ring-2 focus:ring-blue-500/40 sm:col-span-2"
                         placeholder="Nhập lại mật khẩu mới"
                       />

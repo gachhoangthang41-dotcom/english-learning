@@ -84,25 +84,28 @@ export async function GET() {
 
     // ✅ Gom phút theo ngày
     const dailyMinutes: Record<string, number> = {};
+    const dailyCompleted: Record<string, boolean> = {};
 
     for (const p of progress) {
       const ts = p.completedAt || p.lastAccessedAt || p.updatedAt;
       const dayKey = keyDay(startOfDay(new Date(ts)));
 
       const min = Number(p.timeSpentMin || 0);
-      if (min <= 0) continue;
-
-      dailyMinutes[dayKey] = (dailyMinutes[dayKey] || 0) + min;
+      if (min > 0) {
+        dailyMinutes[dayKey] = (dailyMinutes[dayKey] || 0) + min;
+      }
+      if (p.status === "COMPLETED") {
+        dailyCompleted[dayKey] = true;
+      }
     }
 
-    // ✅ 1) Tính streak (ngày liên tiếp có học)
+    // ✅ 1) Tính streak (ngày liên tiếp có bài tập HOÀN THÀNH)
     let streakDays = 0;
     for (let i = 0; i < 365; i++) {
       const day = addDays(today, -i);
       const k = keyDay(day);
-      const min = dailyMinutes[k] || 0;
 
-      if (min > 0) streakDays++;
+      if (dailyCompleted[k]) streakDays++;
       else break;
     }
 
@@ -141,10 +144,13 @@ export async function GET() {
         ? Math.min(100, Math.round((todayMin / user.dailyGoalMin) * 100))
         : 0;
 
+    const hasStudiedToday = !!dailyCompleted[keyDay(today)];
+
     return NextResponse.json(
       {
         status: "success",
         stats: {
+          hasStudiedToday,
           streakDays,
           wordsLearned: wordsLearnedCount,
           hoursStudied,

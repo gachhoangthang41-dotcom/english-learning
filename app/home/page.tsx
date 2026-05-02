@@ -11,7 +11,6 @@ import {
   Dumbbell,
   Users,
   Settings,
-  Bell,
   ChevronDown,
   Menu,
   ChevronLeft,
@@ -29,6 +28,7 @@ import {
 import { ThemeToggle } from '@/views/components/theme-toggle';
 import Flashcards from '@/views/components/Flashcards';
 import { useLanguage } from '@/views/components/language-provider';
+import { NotificationBell } from '@/views/components/notification-bell';
 
 // ---------------- TYPES ----------------
 type MsgType = "error" | "success" | "info";
@@ -43,6 +43,7 @@ type MeUser = {
 };
 
 type HomeStats = {
+  hasStudiedToday?: boolean;
   streakDays: number;
   wordsLearned: number;
   hoursStudied: number;
@@ -290,13 +291,13 @@ export default function HomePage() {
               <NavItem href="/lessons" icon={<BookOpen className="w-4 h-4" />}>
                 {t("lessons")}
               </NavItem>
-              <NavItem href="#" icon={<Dumbbell className="w-4 h-4" />}>
+              <NavItem href="/practice/tenses" icon={<Dumbbell className="w-4 h-4" />}>
                 {t("practice")}
               </NavItem>
               <NavItem href="/history" icon={<History className="w-4 h-4" />}>
                 {t("history")}
               </NavItem>
-              <NavItem href="#" icon={<Users className="w-4 h-4" />}>
+              <NavItem href="/friends" icon={<Users className="w-4 h-4" />}>
                 {t("friends")}
               </NavItem>
               <NavItem href="/profile/security" icon={<Settings className="w-4 h-4" />}>
@@ -306,17 +307,7 @@ export default function HomePage() {
 
             {/* Right Controls */}
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="relative size-9 rounded-full hover:bg-secondary border border-transparent transition grid place-items-center"
-                title={t("notificationsTitle")}
-                onClick={() =>
-                  setMsg({ type: "info", text: t("notificationsComingSoon") })
-                }
-              >
-                <span className="absolute top-2.5 right-2.5 size-2 rounded-full bg-red-500 ring-2 ring-background" />
-                <Bell className="w-5 h-5 text-muted-foreground" />
-              </button>
+              <NotificationBell />
 
               {/* Theme Toggle */}
               <ThemeToggle />
@@ -401,13 +392,13 @@ export default function HomePage() {
                 <NavItem href="/lessons" icon={<BookOpen className="w-4 h-4" />}>
                   {t("lessons")}
                 </NavItem>
-                <NavItem href="#" icon={<Dumbbell className="w-4 h-4" />}>
+                <NavItem href="/practice/tenses" icon={<Dumbbell className="w-4 h-4" />}>
                   {t("practice")}
                 </NavItem>
                 <NavItem href="/history" icon={<History className="w-4 h-4" />}>
                   {t("history")}
                 </NavItem>
-                <NavItem href="#" icon={<Users className="w-4 h-4" />}>
+                <NavItem href="/friends" icon={<Users className="w-4 h-4" />}>
                   {t("friends")}
                 </NavItem>
                 <NavItem href="/profile/security" icon={<Settings className="w-4 h-4" />}>
@@ -476,7 +467,21 @@ export default function HomePage() {
             {/* STATS (dynamic) */}
             <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <StatCard
-                icon={<Flame className="w-5 h-5 text-white dark:text-orange-300" />}
+                icon={
+                  <Flame
+                    className={cx(
+                      "w-5 h-5 transition-all duration-300",
+                      stats?.hasStudiedToday
+                        ? "text-orange-500 dark:text-orange-300 drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]"
+                        : "text-slate-400 dark:text-slate-500 grayscale opacity-80"
+                    )}
+                  />
+                }
+                iconBgClass={
+                  stats?.hasStudiedToday
+                    ? "bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-purple-500/30"
+                    : "bg-slate-200 dark:bg-slate-700/50 shadow-none border border-slate-300 dark:border-slate-600"
+                }
                 badge={loadingStats ? "..." : `${stats?.todayMin || 0} ${t("minutes")}`}
                 badgeTone="emerald"
                 label={t("weeklyStreak")}
@@ -720,12 +725,14 @@ function NavItem({
 // STAT CARD
 function StatCard({
   icon,
+  iconBgClass,
   badge,
   badgeTone,
   label,
   value,
 }: {
   icon: React.ReactNode;
+  iconBgClass?: string;
   badge: string;
   badgeTone: "emerald" | "blue" | "orange";
   label: string;
@@ -741,7 +748,7 @@ function StatCard({
   return (
     <div className="rounded-2xl bg-white dark:bg-slate-800 p-5 hover:-translate-y-0.5 transition shadow-md border border-purple-100 dark:border-slate-700">
       <div className="flex items-start justify-between">
-        <div className="size-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-purple-500/30 grid place-items-center">
+        <div className={cx("size-10 rounded-xl grid place-items-center transition-all duration-300", iconBgClass || "bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-purple-500/30")}>
           {icon}
         </div>
 

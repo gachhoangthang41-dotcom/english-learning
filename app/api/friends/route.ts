@@ -8,49 +8,40 @@ export const runtime = "nodejs";
 export async function GET() {
   try {
     const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value || "";
-    if (!token) {
-      return NextResponse.json(
-        { status: "error", message: "Unauthenticated" },
-        { status: 401 }
-      );
+    let currentUserId = null;
+
+    if (token) {
+      try {
+        const sess = await verifySession(token);
+        currentUserId = sess.userId;
+      } catch (e) {
+        // Ignore invalid session
+      }
     }
 
-    const sess = await verifySession(token);
-
-    const user = await prisma.user.findUnique({
-      where: { id: sess.userId },
+    const users = await prisma.user.findMany({
+      where: currentUserId ? { id: { not: currentUserId } } : undefined,
       select: {
         id: true,
-        email: true,
-        username: true,
         displayName: true,
-        role: true,
+        username: true,
         avatarUrl: true,
-        emailVerifiedAt: true,
+        learnedWordsCount: true,
         createdAt: true,
-        updatedAt: true,
-        practiceRemindersEnabled: true,
-        smartReminderTime: true,
-
-        // ✅ thêm cấp độ
         level: {
           select: {
             code: true,
             name: true,
-            order: true,
           },
         },
       },
+      take: 50,
+      orderBy: {
+        learnedWordsCount: 'desc'
+      }
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { status: "error", message: "User not found" },
-        { status: 401 }
-      );
-    }
-
-    return NextResponse.json({ status: "success", user });
+    return NextResponse.json({ status: "success", users });
   } catch (err) {
     console.error(err);
     return NextResponse.json(

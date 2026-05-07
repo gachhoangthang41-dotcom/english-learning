@@ -286,6 +286,14 @@ export default function LearnPage() {
   const ipaLesson = levelIdStr === "ipa" ? (IPA_LESSONS[topicIdStr] || IPA_LESSONS["1"]) : null;
   const videoSrc = lessonData?.videoSrc || `/videos/${params.levelId}/Lesson ${params.topicId}.mp4`;
 
+  function getYouTubeId(url: string) {
+    if (!url) return null;
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  }
+  const youtubeId = getYouTubeId(videoSrc);
+
   // --- 2. STATES ---
   const [transcript, setTranscript] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<"transcript" | "complete" | null>(null);
@@ -462,14 +470,25 @@ export default function LearnPage() {
         {/* --- VIDEO PLAYER SECTION --- */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
           <div className="aspect-video w-full relative bg-black">
-            <video
-              className="absolute inset-0 w-full h-full"
-              controls
-              playsInline
-              src={videoSrc}
-            >
-              {copy.unsupportedVideo}
-            </video>
+            {youtubeId ? (
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src={`https://www.youtube.com/embed/${youtubeId}?rel=0`}
+                title="YouTube video player"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              ></iframe>
+            ) : (
+              <video
+                className="absolute inset-0 w-full h-full"
+                controls
+                playsInline
+                src={videoSrc}
+              >
+                {copy.unsupportedVideo}
+              </video>
+            )}
           </div>
 
           {/* CONTROL BUTTONS */}

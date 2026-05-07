@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { verifySession, SESSION_COOKIE_NAME } from "@/controllers/session";
 
 type ChatMessage = {
   role: "user" | "assistant";
@@ -147,7 +149,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const userId = typeof sessionId === "string" && sessionId.trim() ? sessionId.trim() : "web-anonymous-user";
+    let realUserId = "anonymous";
+    try {
+      const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+      if (token) {
+        const sess = await verifySession(token);
+        if (sess && sess.userId) {
+          realUserId = sess.userId;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
+    const userId = realUserId !== "anonymous" ? realUserId : (typeof sessionId === "string" && sessionId.trim() ? sessionId.trim() : "anonymous");
     const externalMessage = buildExternalPrompt(normalizedMessages);
 
     const upstreamResponse = await fetch(`${EXTERNAL_API_BASE_URL}/api/v1/chat`, {

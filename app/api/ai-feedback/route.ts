@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { cookies } from "next/headers";
+import { verifySession, SESSION_COOKIE_NAME } from "@/controllers/session";
 
 const EXTERNAL_FEEDBACK_URL = process.env.EXTERNAL_FEEDBACK_URL?.trim().replace(/\/+$/, "") || 
   (process.env.AI_TUTOR_API_BASE_URL ? `${process.env.AI_TUTOR_API_BASE_URL.trim().replace(/\/+$/, "")}/api/v1/feedback` : undefined);
@@ -16,13 +18,25 @@ export async function POST(request: Request) {
       console.log("[API /api/ai-feedback] Received payload (non-serializable)");
     }
 
-    // Accept both legacy and new payload shapes
+    let realUserId = null;
+    try {
+      const token = (await cookies()).get(SESSION_COOKIE_NAME)?.value;
+      if (token) {
+        const sess = await verifySession(token);
+        if (sess && sess.userId) {
+          realUserId = sess.userId;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+
     const rawMessageId = (body?.metadata?.message_id as string) || (body?.messageId as string) || null;
     const messageId = rawMessageId || `msg_${Date.now()}`;
     const assistantContent = (body?.response as string) || (body?.assistantContent as string) || "";
     const previousUserInput = (body?.query as string) || (body?.previousUserInput as string) || null;
     const sessionId = (body?.metadata?.session_id as string) || (body?.sessionId as string) || null;
-    const userId = (body?.user_id as string) || (body?.userId as string) || null;
+    const userId = realUserId || (body?.user_id as string) || (body?.userId as string) || null;
     const feedbackType = (body?.feedback_type as string) || (body?.feedbackType as string) || (body?.command ? "explicit_command" : "unknown");
     const liked = typeof body?.liked === "boolean" ? body.liked : typeof body?.score === "number" ? body.score === 1 : (body?.command === "like");
 

@@ -17,8 +17,10 @@ import {
     Bot,
     Star
 } from "lucide-react";
+import YouTube, { YouTubePlayer } from 'react-youtube';
 import { useLanguage } from '@/views/components/language-provider';
 import { LESSONS_BY_LEVEL } from '@/models/data/a1-lessons';
+import { callBackendAPI } from '@/lib/api';
 
 // Defining the Segment type for the API response
 type Segment = {
@@ -54,6 +56,37 @@ type BrowserSpeechRecognition = {
 type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
 
 const SEGMENT_EPSILON = 0.05;
+
+function getYouTubeEmbedSrc(src: string): string | null {
+    try {
+        const url = new URL(src);
+        const host = url.hostname.replace(/^www\./, "");
+        const videoId = host === "youtu.be" ? url.pathname.slice(1) : url.searchParams.get("v");
+
+        if (!videoId || (!host.endsWith("youtube.com") && host !== "youtu.be")) {
+            return null;
+        }
+
+        return `https://www.youtube.com/embed/${videoId}`;
+    } catch {
+        return null;
+    }
+}
+
+function addYouTubeSegmentParams(embedSrc: string, segment?: Segment, autoplay = false): string {
+    const params = new URLSearchParams({ rel: "0" });
+
+    if (segment) {
+        params.set("start", String(Math.floor(segment.startTime)));
+        params.set("end", String(Math.ceil(segment.endTime)));
+    }
+
+    if (autoplay) {
+        params.set("autoplay", "1");
+    }
+
+    return `${embedSrc}?${params.toString()}`;
+}
 
 export default function DictationPage() {
     const params = useParams();
@@ -174,7 +207,9 @@ export default function DictationPage() {
     const [isVideoHidden, setIsVideoHidden] = useState(false);
     const [videoSize, setVideoSize] = useState<VideoSize>("Large");
     const videoRef = useRef<HTMLVideoElement>(null);
+    const youtubePlayerRef = useRef<YouTubePlayer | null>(null);
     const playbackStopTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [youtubeReplayNonce, setYoutubeReplayNonce] = useState(0);
 
     // Exercise State
     const [currentSegIndex, setCurrentSegIndex] = useState(0);
@@ -189,6 +224,7 @@ export default function DictationPage() {
     const [levelCode, setLevelCode] = useState<string>(typeof params.levelId === 'string' ? params.levelId.toUpperCase() : "A1");
     const [isLoading, setIsLoading] = useState(true);
     const resolvedVideoSrc = videoId || lessonVideoSrc || `/videos/${params.levelId}/Lesson ${params.topicId}.mp4`;
+    const youtubeEmbedSrc = getYouTubeEmbedSrc(resolvedVideoSrc);
 
     const [aiTranslation, setAiTranslation] = useState<string>("");
     const [isTranslating, setIsTranslating] = useState(false);
@@ -200,6 +236,9 @@ export default function DictationPage() {
 
     const currentSegment = segments[currentSegIndex];
     const activeSegmentRef = useRef(currentSegIndex);
+    const resolvedYoutubeEmbedSrc = youtubeEmbedSrc
+        ? addYouTubeSegmentParams(youtubeEmbedSrc, currentSegment, youtubeReplayNonce > 0)
+        : null;
 
     useEffect(() => {
         activeSegmentRef.current = currentSegIndex;
@@ -235,25 +274,57 @@ export default function DictationPage() {
         }, remainingMs);
     };
 
-    const playCurrentSegment = (fromStart = false) => {
+    const playCurrentSegment = async (fromStart = false) => {
         const video = videoRef.current;
+        const ytPlayer = youtubePlayerRef.current;
         const segmentToPlay = segments[activeSegmentRef.current];
-        if (!video || !segmentToPlay) return;
+        if (!segmentToPlay) return;
 
         clearPlaybackStopTimer();
-        video.pause();
 
-        if (
-            fromStart ||
-            video.currentTime < segmentToPlay.startTime ||
-            video.currentTime >= segmentToPlay.endTime - SEGMENT_EPSILON
-        ) {
-            video.currentTime = segmentToPlay.startTime + SEGMENT_EPSILON;
+        if (ytPlayer && typeof ytPlayer.seekTo === 'function') {
+            const currentTime = await ytPlayer.getCurrentTime();
+            if (fromStart || currentTime < segmentToPlay.startTime || currentTime >= segmentToPlay.endTime - SEGMENT_EPSILON) {
+                ytPlayer.seekTo(segmentToPlay.startTime + SEGMENT_EPSILON, true);
+            }
+            ytPlayer.playVideo();
+            setIsPlaying(true);
+        } else if (video) {
+            video.pause();
+            if (
+                fromStart ||
+                video.currentTime < segmentToPlay.startTime ||
+                video.currentTime >= segmentToPlay.endTime - SEGMENT_EPSILON
+            ) {
+                video.currentTime = segmentToPlay.startTime + SEGMENT_EPSILON;
+            }
+            video.play();
+            setIsPlaying(true);
+            schedulePlaybackStop(segmentToPlay);
         }
-
-        video.play();
-        schedulePlaybackStop(segmentToPlay);
     };
+
+    // YouTube playback interval
+    useEffect(() => {
+        let intervalId: NodeJS.Timeout;
+        if (isPlaying && youtubeEmbedSrc) {
+            intervalId = setInterval(async () => {
+                const ytPlayer = youtubePlayerRef.current;
+                const currentSeg = segments[currentSegIndex];
+                if (ytPlayer && typeof ytPlayer.getCurrentTime === 'function' && currentSeg) {
+                    const currentTime = await ytPlayer.getCurrentTime();
+                    if (currentTime >= currentSeg.endTime - SEGMENT_EPSILON) {
+                        ytPlayer.pauseVideo();
+                        setIsPlaying(false);
+                        if (intervalId) clearInterval(intervalId);
+                    }
+                }
+            }, 100);
+        }
+        return () => {
+            if (intervalId) clearInterval(intervalId);
+        };
+    }, [isPlaying, currentSegIndex, segments, youtubeEmbedSrc]);
 
     // Speech Recognition & Reveal State
     const [isTextRevealed, setIsTextRevealed] = useState(false);
@@ -327,30 +398,11 @@ export default function DictationPage() {
             fallbackRandom();
 
             try {
-                const prompt = `Lệnh hệ thống nội bộ (Bypass Router): Chỉ trích xuất 2 hoặc 3 từ khóa quan trọng nhất từ câu sau. YÊU CẦU NGHIÊM NGẶT: Trả về DUY NHẤT một mảng JSON chứa các từ đó, không có bất kỳ nội dung nào khác, không kèm văn bản, không bọc thẻ markdown. Ví dụ: ["word1", "word2"]. Câu tiếng Anh: "${currentSegment.text}"`;
-                const res = await fetch("/api/ai-assistant", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        messages: [{ role: 'user', content: prompt }],
-                    }),
+                const data = await callBackendAPI("/api/v1/exercise/fill_blank", {
+                    sentence: currentSegment.text
                 });
-                if (!res.ok) throw new Error("API failed");
-                const data = await res.json();
 
-                let wordsToBlank: string[] = [];
-                try {
-                    const cleanJson = data.text.replace(/```json/g, '').replace(/```/g, '').trim();
-                    const match = cleanJson.match(/\[[\s\S]*?\]/);
-                    if (match) {
-                        wordsToBlank = JSON.parse(match[0]);
-                    } else {
-                        wordsToBlank = JSON.parse(cleanJson);
-                    }
-                } catch (e) {
-                    console.error("AI did not return valid JSON", data.text);
-                    throw new Error("Invalid format");
-                }
+                let wordsToBlank: string[] = data?.blanks || [];
 
                 if (!isMounted) return;
 
@@ -373,10 +425,13 @@ export default function DictationPage() {
                     if (!hasAtLeastOneBlank) {
                         fallbackRandom();
                     } else {
+                        // Store exercise_id for submission later
                         setBlanks(newBlanks);
+                        (window as any).currentExerciseId = data.exercise_id;
                     }
                 }
             } catch (err) {
+                console.error("Error calling fill_blank API", err);
                 fallbackRandom();
             } finally {
                 if (isMounted) setIsGeneratingBlanks(false);
@@ -401,25 +456,59 @@ export default function DictationPage() {
         if (currentSegIndex < segments.length - 1) {
             const nextIndex = currentSegIndex + 1;
             setCurrentSegIndex(nextIndex);
+            setYoutubeReplayNonce(0);
             clearPlaybackStopTimer();
-            if (videoRef.current) {
+            if (youtubePlayerRef.current && typeof youtubePlayerRef.current.seekTo === 'function') {
+                youtubePlayerRef.current.pauseVideo();
+                youtubePlayerRef.current.seekTo(segments[nextIndex].startTime + SEGMENT_EPSILON, true);
+                setIsPlaying(false);
+            } else if (videoRef.current) {
                 videoRef.current.pause();
                 videoRef.current.currentTime = segments[nextIndex].startTime + SEGMENT_EPSILON;
+                setIsPlaying(false);
             }
         }
     };
 
     const togglePlay = () => {
+        if (youtubeEmbedSrc && currentSegment) {
+            const ytPlayer = youtubePlayerRef.current;
+            if (ytPlayer && typeof ytPlayer.playVideo === 'function') {
+                if (isPlaying) {
+                    ytPlayer.pauseVideo();
+                    setIsPlaying(false);
+                } else {
+                    playCurrentSegment();
+                }
+            } else {
+                setYoutubeReplayNonce((nonce) => nonce + 1);
+                setIsPlaying(true);
+            }
+            return;
+        }
+
         if (!videoRef.current || !currentSegment) return;
         if (!videoRef.current.paused) {
             clearPlaybackStopTimer();
             videoRef.current.pause();
+            setIsPlaying(false);
         } else {
             playCurrentSegment(true);
         }
     };
 
     const replayCurrentSegment = () => {
+        if (youtubeEmbedSrc && currentSegment) {
+            const ytPlayer = youtubePlayerRef.current;
+            if (ytPlayer && typeof ytPlayer.playVideo === 'function') {
+                playCurrentSegment(true);
+            } else {
+                setYoutubeReplayNonce((nonce) => nonce + 1);
+                setIsPlaying(true);
+            }
+            return;
+        }
+
         if (!videoRef.current || !currentSegment) return;
         playCurrentSegment(true);
     };
@@ -772,6 +861,19 @@ export default function DictationPage() {
                             if (!Number.isNaN(score) && score >= 0.75) {
                                 setIsTextRevealed(true);
                             }
+
+                            // Submit dictation result to backend
+                            try {
+                                const exerciseId = (window as any).currentExerciseId || "dict_" + Date.now();
+                                callBackendAPI("/api/v1/exercise/dictation/submit", {
+                                    exercise_id: exerciseId,
+                                    original_text: currentSegment?.text || '',
+                                    user_input: transcript || data.result?.text || ''
+                                }).catch(console.error);
+                            } catch (e) {
+                                console.error("Failed to submit dictation to backend", e);
+                            }
+
                         } else {
                             console.warn('/api/pronunciation/check failed', data);
                             setRecognitionError(data?.message || 'Lỗi kiểm tra phát âm');
@@ -872,27 +974,56 @@ export default function DictationPage() {
                         </div>
 
                         <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-black shadow-2xl">
-                            <video
-                                ref={videoRef}
-                                className="absolute inset-0 w-full h-full"
-                                controls
-                                playsInline
-                                src={resolvedVideoSrc}
-                                onTimeUpdate={handleTimeUpdate}
-                                onSeeked={keepVideoInsideCurrentSegment}
-                                onLoadedMetadata={keepVideoInsideCurrentSegment}
-                                onPlay={() => {
-                                    alignPlaybackToCurrentSegment();
-                                    schedulePlaybackStop();
-                                    setIsPlaying(true);
-                                }}
-                                onPause={() => {
-                                    clearPlaybackStopTimer();
-                                    setIsPlaying(false);
-                                }}
-                            >
-                                {copy.unsupportedVideo}
-                            </video>
+                            {resolvedYoutubeEmbedSrc ? (
+                                <YouTube
+                                    videoId={resolvedYoutubeEmbedSrc?.split('/').pop()?.split('?')[0] || videoId}
+                                    opts={{
+                                        height: '100%',
+                                        width: '100%',
+                                        playerVars: {
+                                            rel: 0,
+                                            modestbranding: 1,
+                                            playsinline: 1
+                                        },
+                                    }}
+                                    onReady={(event) => {
+                                        youtubePlayerRef.current = event.target;
+                                        if (currentSegment) {
+                                            event.target.seekTo(currentSegment.startTime + SEGMENT_EPSILON, true);
+                                            if (youtubeReplayNonce > 0) {
+                                                event.target.playVideo();
+                                            }
+                                        }
+                                    }}
+                                    onPlay={() => setIsPlaying(true)}
+                                    onPause={() => setIsPlaying(false)}
+                                    onEnd={() => setIsPlaying(false)}
+                                    className="absolute inset-0 w-full h-full"
+                                    iframeClassName="w-full h-full"
+                                />
+                            ) : (
+                                <video
+                                    ref={videoRef}
+                                    className="absolute inset-0 w-full h-full"
+                                    controls
+                                    playsInline
+                                    src={resolvedVideoSrc}
+                                    onTimeUpdate={handleTimeUpdate}
+                                    onSeeked={keepVideoInsideCurrentSegment}
+                                    onLoadedMetadata={keepVideoInsideCurrentSegment}
+                                    onPlay={() => {
+                                        alignPlaybackToCurrentSegment();
+                                        schedulePlaybackStop();
+                                        setIsPlaying(true);
+                                    }}
+                                    onPause={() => {
+                                        clearPlaybackStopTimer();
+                                        setIsPlaying(false);
+                                    }}
+                                >
+                                    {copy.unsupportedVideo}
+                                </video>
+                            )}
                         </div>
 
                         {/* AI Explanation Block */}
@@ -1029,6 +1160,20 @@ export default function DictationPage() {
                                             }).finally(() => {
                                                 setIsTranslating(false);
                                             });
+                                        }
+
+                                        // Submit fill blank to backend
+                                        try {
+                                            const exerciseId = (window as any).currentExerciseId;
+                                            if (exerciseId) {
+                                                const userAnswers = blanks.filter(b => b.isBlank).map(b => b.userValue);
+                                                callBackendAPI("/api/v1/exercise/fill_blank/submit", {
+                                                    exercise_id: exerciseId,
+                                                    answers: userAnswers
+                                                }).catch(console.error);
+                                            }
+                                        } catch (e) {
+                                            console.error("Failed to submit fill_blank to backend", e);
                                         }
                                     }}
                                     className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg shadow-lg transition"

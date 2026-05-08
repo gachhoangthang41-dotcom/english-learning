@@ -1,7 +1,7 @@
 import { getSession } from "next-auth/react";
 
 // URL Backend - cập nhật khi chạy Cloudflare Tunnel mới
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://campus-never-relevance-soldiers.trycloudflare.com";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "https://seriously-colin-scheduled-comparable.trycloudflare.com";
 const API_KEY = process.env.NEXT_PUBLIC_API_KEY || "viet-tutor-secret-key-2024";
 
 /**

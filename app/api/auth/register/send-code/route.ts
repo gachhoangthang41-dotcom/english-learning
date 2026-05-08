@@ -83,18 +83,37 @@ export async function POST(req: Request) {
     });
 
     if (existingByUsername) {
-      return NextResponse.json(
-        { status: "error", message: "Tên người dùng đã tồn tại." },
-        { status: 409 }
-      );
+      // Nếu username thuộc về user khác đã xác minh → chặn
+      if (existingByUsername.emailVerifiedAt) {
+        return NextResponse.json(
+          { status: "error", message: "Tên người dùng đã tồn tại." },
+          { status: 409 }
+        );
+      }
+
+      // Nếu username thuộc về user CHƯA xác minh và KHÁC email đang đăng ký
+      // → xóa user cũ chưa verify để giải phóng username
+      if (existingByUsername.email !== email.toLowerCase() && existingByUsername.id !== existingByEmail?.id) {
+        await prisma.token.deleteMany({ where: { userId: existingByUsername.id } });
+        await prisma.user.delete({ where: { id: existingByUsername.id } });
+      }
     }
 
     /* ---------- create / update user (pending) ---------- */
     const passwordHash = await bcrypt.hash(String(password), 10);
 
-    const user =
-      existingByEmail ??
-      (await prisma.user.create({
+    let user;
+    if (existingByEmail) {
+      // Email đã có nhưng chưa verify → cập nhật username/password mới
+      user = await prisma.user.update({
+        where: { id: existingByEmail.id },
+        data: {
+          username,
+          passwordHash,
+        },
+      });
+    } else {
+      user = await prisma.user.create({
         data: {
           username,
           email,
@@ -103,7 +122,8 @@ export async function POST(req: Request) {
           emailVerifiedAt: null,
           levelId: levelA1.id, // ✅ mặc định A1
         },
-      }));
+      });
+    }
 
     /* ---------- cooldown 60s ---------- */
     const lastToken = await prisma.token.findFirst({

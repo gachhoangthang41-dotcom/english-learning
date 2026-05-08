@@ -286,14 +286,6 @@ export default function LearnPage() {
   const ipaLesson = levelIdStr === "ipa" ? (IPA_LESSONS[topicIdStr] || IPA_LESSONS["1"]) : null;
   const videoSrc = lessonData?.videoSrc || `/videos/${params.levelId}/Lesson ${params.topicId}.mp4`;
 
-  function getYouTubeId(url: string) {
-    if (!url) return null;
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
-  }
-  const youtubeId = getYouTubeId(videoSrc);
-
   // --- 2. STATES ---
   const [transcript, setTranscript] = useState<string | null>(null);
   const [loadingAction, setLoadingAction] = useState<"transcript" | "complete" | null>(null);
@@ -302,6 +294,7 @@ export default function LearnPage() {
   const [selectedWord, setSelectedWord] = useState<{ word: string; x: number; y: number } | null>(null);
   const [savingWord, setSavingWord] = useState(false);
   const [wordSaved, setWordSaved] = useState(false);
+  const [wordSaveError, setWordSaveError] = useState<string | null>(null);
 
   // --- TIMER STATE ---
   const [studyTimeSeconds, setStudyTimeSeconds] = useState(0);
@@ -360,20 +353,29 @@ export default function LearnPage() {
       y: rect.bottom - containerRect.top
     });
     setWordSaved(false);
+    setWordSaveError(null);
   };
 
   const handleSaveWord = async () => {
     if (!selectedWord) return;
     setSavingWord(true);
+    setWordSaveError(null);
     try {
       const res = await fetch("/api/dictionary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ word: selectedWord.word })
       });
-      if (res.ok) setWordSaved(true);
+      if (res.ok) {
+        setWordSaved(true);
+      } else if (res.status === 401) {
+        setWordSaveError(isEnglish ? "Please log in to save words." : "Vui lòng đăng nhập để lưu từ vựng.");
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setWordSaveError(data.message || (isEnglish ? "Failed to save word." : "Không thể lưu từ vựng."));
+      }
     } catch {
-      // alert err
+      setWordSaveError(isEnglish ? "Network error. Please try again." : "Lỗi mạng. Vui lòng thử lại.");
     } finally {
       setSavingWord(false);
     }
@@ -470,15 +472,15 @@ export default function LearnPage() {
         {/* --- VIDEO PLAYER SECTION --- */}
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-2xl">
           <div className="aspect-video w-full relative bg-black">
-            {youtubeId ? (
+            {/youtu\.?be/.test(videoSrc) ? (
               <iframe
                 className="absolute inset-0 w-full h-full"
-                src={`https://www.youtube.com/embed/${youtubeId}?rel=0`}
-                title="YouTube video player"
+                src={`https://www.youtube.com/embed/${videoSrc.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/))([^?&]+)/)?.[1] || ''}`}
+                title="Lesson Video"
                 frameBorder="0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowFullScreen
-              ></iframe>
+              />
             ) : (
               <video
                 className="absolute inset-0 w-full h-full"
@@ -564,7 +566,7 @@ export default function LearnPage() {
                         onClick={handleSaveWord}
                         disabled={savingWord || wordSaved}
                         className={`w-full py-2.5 rounded-lg text-sm font-bold transition shadow-sm
-                          ${wordSaved ? 'bg-green-600/10 text-green-600 dark:text-green-400 pointer-events-none' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-500/20'}`}
+                          ${wordSaved ? 'bg-green-600/10 text-green-600 dark:text-green-400 pointer-events-none' : wordSaveError ? 'bg-red-600/10 text-red-600 dark:text-red-400' : 'bg-blue-600 text-white hover:bg-blue-500 shadow-blue-500/20'}`}
                       >
                         {savingWord ? (
                           <span className="flex items-center justify-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> {copy.saving}</span>
@@ -574,6 +576,9 @@ export default function LearnPage() {
                           copy.saveToFlashcards
                         )}
                       </button>
+                      {wordSaveError && (
+                        <p className="mt-2 text-xs text-red-500 dark:text-red-400 text-center leading-tight">{wordSaveError}</p>
+                      )}
                     </div>
                   )}
                 </>

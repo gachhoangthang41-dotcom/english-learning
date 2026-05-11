@@ -27,6 +27,164 @@ function IpaLessonView({
   onComplete: () => void;
 }) {
   const locale = isEnglish ? "en" : "vi";
+
+  const [recordingWord, setRecordingWord] = useState<string | null>(null);
+  const [recognizedText, setRecognizedText] = useState<{ [word: string]: { text: string; score: number } }>({});
+  const [recError, setRecError] = useState("");
+
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = React.useRef<MediaStream | null>(null);
+
+  const blobToDataUrl = (blob: Blob): Promise<string> => {
+      return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(String(reader.result));
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+      });
+  };
+
+  const startSpeechRecognition = async (targetWord: string) => {
+      // Stop TTS if playing
+      if ("speechSynthesis" in window) {
+          window.speechSynthesis.cancel();
+      }
+
+      setRecError("");
+      
+      // If already recording, stop it
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+          mediaRecorderRef.current.stop();
+          return;
+      }
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          setRecError("Trình duyệt không hỗ trợ ghi âm.");
+          return;
+      }
+
+      try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaStreamRef.current = stream;
+
+          const defaultMime = 'audio/webm';
+          let mime = defaultMime;
+          try {
+              if (typeof (MediaRecorder as any).isTypeSupported === 'function') {
+                  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/wav'];
+                  for (const c of candidates) {
+                      if ((MediaRecorder as any).isTypeSupported(c)) {
+                          mime = c;
+                          break;
+                      }
+                  }
+              }
+          } catch (e) {}
+
+          const options: any = {};
+          if ((MediaRecorder as any).isTypeSupported && (MediaRecorder as any).isTypeSupported(mime)) options.mimeType = mime;
+
+          const recorder = new MediaRecorder(stream, options);
+          const chunks: Blob[] = [];
+
+          recorder.ondataavailable = (ev: BlobEvent) => {
+              if (ev.data && ev.data.size) chunks.push(ev.data);
+          };
+
+          recorder.onstart = () => {
+              setRecordingWord(targetWord);
+          };
+
+          recorder.onstop = async () => {
+              setRecordingWord(null);
+              
+              setRecognizedText(prev => ({
+                  ...prev,
+                  [targetWord]: { text: "Đang phân tích AI...", score: -1 } // loading
+              }));
+
+              try {
+                  const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' });
+                  const dataUrl = await blobToDataUrl(blob);
+                  const base64 = dataUrl.split(',')[1] || '';
+
+                  const payload = {
+                      audioBase64: base64,
+                      mimeType: blob.type || 'audio/webm',
+                      filename: 'record.webm',
+                      reference: targetWord.replace(/\//g, '').replace(/-/g, ' ')
+                  };
+
+                  const res = await fetch('/api/pronunciation/check', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(payload),
+                      cache: 'no-store',
+                  });
+
+                  const data = await res.json().catch(() => null);
+                  if (res.ok && data?.status === 'success') {
+                      const result = data.result || data.data || data;
+                      // The backend might return 0-100 score, or confidence. Assuming percentage 0-100 here.
+                      let score = Number(result?.score ?? result?.confidence ?? data?.data?.score ?? 0);
+                      
+                      // Convert fraction (e.g. 0.85) to percentage if needed
+                      if (score <= 1 && score > 0) score = score * 100;
+
+                      const userTranscript = result?.transcript || result?.text || "Hoàn thành phân tích";
+                      
+                      setRecognizedText(prev => ({
+                          ...prev,
+                          [targetWord]: { text: userTranscript, score: score }
+                      }));
+                  } else {
+                      setRecError(data?.message || 'Lỗi kiểm tra phát âm qua AI.');
+                      setRecognizedText(prev => {
+                          const next = { ...prev };
+                          delete next[targetWord];
+                          return next;
+                      });
+                  }
+              } catch (err) {
+                  setRecError("Lỗi kết nối máy chủ AI.");
+                  setRecognizedText(prev => {
+                      const next = { ...prev };
+                      delete next[targetWord];
+                      return next;
+                  });
+              } finally {
+                  try {
+                      mediaStreamRef.current?.getTracks().forEach((t) => t.stop());
+                  } catch {}
+                  mediaStreamRef.current = null;
+                  mediaRecorderRef.current = null;
+              }
+          };
+
+          recorder.start();
+          mediaRecorderRef.current = recorder;
+
+          // Automatically stop after 2.5 seconds for single words
+          setTimeout(() => {
+              if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                  mediaRecorderRef.current.stop();
+              }
+          }, 2500);
+
+      } catch (err) {
+          setRecError("Vui lòng cấp quyền sử dụng Micro.");
+      }
+  };
+
+  const playAudio = (text: string) => {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel(); // Cancel any ongoing speech
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    utterance.rate = 0.85;
+    window.speechSynthesis.speak(utterance);
+  };
+
   const copy = isEnglish
     ? {
         courseLabel: `IPA UNIT ${topicId}`,
@@ -129,6 +287,11 @@ function IpaLessonView({
           </aside>
         </div>
 
+        {recError && (
+          <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-600 dark:text-red-400">
+            {recError}
+          </div>
+        )}
         <div className="space-y-6">
           {lesson.sections.map((section) => (
             <section key={section.title.en} className="rounded-3xl border border-border bg-card p-6 shadow-xl">
@@ -146,16 +309,55 @@ function IpaLessonView({
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                 {section.cards.map((card) => (
-                  <article key={`${section.title.en}-${card.symbol}-${card.word}`} className="rounded-2xl border border-border bg-secondary/35 p-5 shadow-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-3xl font-black tracking-tight text-foreground">{card.symbol}</div>
+                  <article 
+                    key={`${section.title.en}-${card.symbol}-${card.word}`} 
+                    className="group relative rounded-2xl border border-border bg-secondary/35 p-5 shadow-sm transition-all hover:border-teal-500/50 hover:shadow-md"
+                  >
+                    <div className="flex items-center justify-between gap-3 rounded-xl p-2 transition-colors hover:bg-teal-500/10">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="text-3xl font-black tracking-tight text-foreground cursor-pointer"
+                          onClick={() => playAudio(card.symbol.replace(/\//g, '').replace(/-/g, ' '))}
+                          title="Phát âm ký hiệu"
+                        >
+                          {card.symbol}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button 
+                            onClick={() => startSpeechRecognition(card.symbol)} 
+                            className={`rounded-full p-1.5 transition-colors ${recordingWord === card.symbol ? 'bg-red-500 text-white animate-pulse' : 'text-teal-600 opacity-60 hover:bg-teal-500/20 hover:opacity-100 dark:text-teal-400'}`} 
+                            title="Kiểm tra phát âm"
+                          >
+                            <Mic size={20} />
+                          </button>
+                          <button 
+                            onClick={() => playAudio(card.symbol.replace(/\//g, '').replace(/-/g, ' '))} 
+                            className="rounded-full p-1.5 text-teal-600 opacity-60 transition-colors hover:bg-teal-500/20 hover:opacity-100 dark:text-teal-400" 
+                            title="Nghe ký hiệu"
+                          >
+                            <Volume2 size={20} />
+                          </button>
+                        </div>
+                      </div>
                       <div className="rounded-full border border-teal-500/20 bg-teal-500/10 px-3 py-1 text-xs font-bold text-teal-700 dark:text-teal-300">
                         {card.ipa}
                       </div>
                     </div>
+                    {recognizedText[card.symbol] && (
+                        <div className={`mt-1 mb-2 mx-2 px-3 py-1.5 text-xs font-semibold rounded-lg ${recognizedText[card.symbol].score === -1 ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 animate-pulse' : recognizedText[card.symbol].score >= 80 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
+                            {recognizedText[card.symbol].score === -1 ? recognizedText[card.symbol].text : recognizedText[card.symbol].score >= 80 ? `Chính xác! 🎉 (${recognizedText[card.symbol].score}%)` : `Sai rồi (${Math.round(recognizedText[card.symbol].score)}%). Thử lại nhé!`}
+                        </div>
+                    )}
 
-                    <div className="mt-4 text-lg font-bold text-foreground">{card.word}</div>
-                    <p className="mt-2 text-sm leading-6 text-foreground/85">{card.sound[locale]}</p>
+                    <div 
+                      className="mt-2 flex cursor-pointer items-center justify-between rounded-xl p-2 transition-colors hover:bg-teal-500/10"
+                      onClick={() => playAudio(card.word)}
+                      title="Phát âm từ ví dụ"
+                    >
+                      <div className="text-lg font-bold text-foreground">{card.word}</div>
+                      <Volume2 size={18} className="text-teal-600 opacity-60 transition-opacity hover:opacity-100 dark:text-teal-400" />
+                    </div>
+                    <p className="mt-2 px-2 text-sm leading-6 text-foreground/85">{card.sound[locale]}</p>
                     <p className="mt-4 rounded-2xl border border-border/80 bg-background/70 px-4 py-3 text-sm leading-6 text-muted-foreground">
                       {card.tip[locale]}
                     </p>
@@ -197,10 +399,41 @@ function IpaLessonView({
 
               <div className="divide-y divide-border/80">
                 {lesson.practiceWords.map((item) => (
-                  <div key={`${item.word}-${item.ipa}`} className="grid grid-cols-[1fr_auto] gap-4 px-4 py-4 items-start">
+                  <div 
+                    key={`${item.word}-${item.ipa}`} 
+                    className="group grid grid-cols-[1fr_auto] items-start gap-4 px-4 py-4 transition-colors hover:bg-teal-500/5"
+                  >
                     <div>
-                      <div className="text-base font-bold text-foreground">{item.word}</div>
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="text-base font-bold text-foreground cursor-pointer"
+                          onClick={() => playAudio(item.word)}
+                        >
+                          {item.word}
+                        </div>
+                        <div className={`flex items-center gap-1 transition-opacity ${recordingWord === item.word ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'}`}>
+                          <button 
+                            onClick={() => startSpeechRecognition(item.word)} 
+                            className={`rounded-full p-1.5 transition-colors ${recordingWord === item.word ? 'bg-red-500 text-white animate-pulse' : 'text-teal-600 hover:bg-teal-500/20 dark:text-teal-400'}`} 
+                            title="Kiểm tra phát âm"
+                          >
+                            <Mic size={16} />
+                          </button>
+                          <button 
+                            onClick={() => playAudio(item.word)} 
+                            className="rounded-full p-1.5 text-teal-600 transition-colors hover:bg-teal-500/20 dark:text-teal-400" 
+                            title="Nghe từ ví dụ"
+                          >
+                            <Volume2 size={16} />
+                          </button>
+                        </div>
+                      </div>
                       <div className="mt-1 text-sm font-semibold text-teal-700 dark:text-teal-300">{item.ipa}</div>
+                      {recognizedText[item.word] && (
+                          <div className={`mt-2 inline-block px-2 py-1 text-xs font-semibold rounded-md ${recognizedText[item.word].score === -1 ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 animate-pulse' : recognizedText[item.word].score >= 80 ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-red-500/15 text-red-700 dark:text-red-300'}`}>
+                              {recognizedText[item.word].score === -1 ? recognizedText[item.word].text : recognizedText[item.word].score >= 80 ? `Chính xác! 🎉 (${recognizedText[item.word].score}%)` : `Điểm: ${Math.round(recognizedText[item.word].score)}%`}
+                          </div>
+                      )}
                     </div>
                     <div className="max-w-xs text-right text-sm leading-6 text-muted-foreground">{item.note[locale]}</div>
                   </div>

@@ -233,19 +233,23 @@ export default function DictationPage() {
 
     // --- Create YouTube Player once API is ready ---
     useEffect(() => {
-        if (!isYT || !ytReady || !ytContainerRef.current) return;
+        const container = document.getElementById('youtube-player-container');
+        if (!isYT || !ytReady || !container) return;
         if (ytPlayerRef.current) return; // already created
 
         const ytId = extractYouTubeId(resolvedVideoSrc);
         if (!ytId) return;
 
-        ytPlayerRef.current = new (window as any).YT.Player(ytContainerRef.current, {
+        ytPlayerRef.current = new (window as any).YT.Player('youtube-player-container', {
             videoId: ytId,
+            width: '100%',
+            height: '100%',
             playerVars: {
                 controls: 1,
                 modestbranding: 1,
                 rel: 0,
                 playsinline: 1,
+                origin: window.location.origin,
             },
             events: {
                 onStateChange: (event: any) => {
@@ -1001,7 +1005,9 @@ export default function DictationPage() {
 
                         <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-black shadow-2xl">
                             {isYT ? (
-                                <div ref={ytContainerRef} className="absolute inset-0 w-full h-full" />
+                                <div className="absolute inset-0 w-full h-full pointer-events-auto">
+                                    <div id="youtube-player-container" />
+                                </div>
                             ) : (
                                 <video
                                     ref={videoRef}
